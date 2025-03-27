@@ -316,7 +316,12 @@
                 I agree to the <a href="#" class="text-emerald-600 hover:text-emerald-500">Terms of Service</a> and <a href="#" class="text-emerald-600 hover:text-emerald-500">Privacy Policy</a>
               </label>
             </div>
-            <button @click="register" class="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 transition">Register</button>
+            <button 
+              @click="register" 
+              class="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 transition"
+            >
+              Register
+            </button>
           </div>
           <div class="mt-4 text-center text-sm text-gray-600">
             Already have an account? 
@@ -488,6 +493,11 @@
   <script>
   import NavBar from '../components/NavBar.vue'
   import Footer from '../components/Footer.vue'
+  import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+  import { db } from "../firebase/config";
+  import { createUserWithEmailAndPassword } from "firebase/auth";
+  import { setDoc } from "firebase/firestore";
+  import { auth } from "../firebase/config";
 
   export default {
     name: 'RegisterModal',
@@ -519,10 +529,18 @@
         },
         errors: {},
         status: null,
-        isSubmitting: false
+        isSubmitting: false,
+        borrowRequests: [],
+        newRequest: { component: "", quantity: 1 },
+        isEditing: false,
+        editingRequestId: null,
       }
     },
     
+    async created() {
+      await this.fetchBorrowRequests();
+    },
+
     methods: {
       validateForm() {
         this.errors = {}
@@ -588,32 +606,55 @@
         return isValid
       },
       
-      register() {
+      async register() {
         if (!this.validateForm()) {
-          return
+          return;
         }
-        
-        this.isSubmitting = true
-        this.status = null
-        
-        // Simulate API call
-        setTimeout(() => {
-          // In a real app, you would make an API call to register the user
-          this.isSubmitting = false
-          
-          // Simulate success
+  
+        this.isSubmitting = true;
+        this.status = null;
+  
+        try {
+          // Create user in Firebase Authentication
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            this.registerForm.email,
+            this.registerForm.password
+          );
+  
+          const user = userCredential.user;
+  
+          // Store user details in Firestore
+          await setDoc(doc(db, "users", user.uid), {
+            firstName: this.registerForm.firstName,
+            lastName: this.registerForm.lastName,
+            email: this.registerForm.email,
+            studentId: this.registerForm.studentId,
+            department: this.registerForm.department,
+            phone: this.registerForm.phone,
+            role: "user", // Default role
+            createdAt: new Date(),
+          });
+  
           this.status = {
-            type: 'success',
-            message: 'Registration successful! You can now log in.'
-          }
-          
-          // Emit success event
+            type: "success",
+            message: "Registration successful! You can now log in.",
+          };
+  
+          // Emit success event and switch to login modal
           setTimeout(() => {
-            this.$emit('register-success')
-            this.$emit('switch-to-login')
-          }, 1500)
-          
-        }, 1500)
+            this.showRegisterModal = false;
+            this.showLoginModal = true;
+          }, 1500);
+        } catch (error) {
+          console.error("Error during registration:", error);
+          this.status = {
+            type: "error",
+            message: error.message || "Failed to register. Please try again.",
+          };
+        } finally {
+          this.isSubmitting = false;
+        }
       },
       
       resetForm() {
@@ -630,7 +671,34 @@
         }
         this.errors = {}
         this.status = null
-      }
+      },
+
+      async fetchBorrowRequests() {
+        const snapshot = await getDocs(collection(db, "borrowRequests"));
+        this.borrowRequests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      },
+      async addRequest() {
+        await addDoc(collection(db, "borrowRequests"), this.newRequest);
+        this.newRequest = { component: "", quantity: 1 };
+        await this.fetchBorrowRequests();
+      },
+      async editRequest(request) {
+        this.isEditing = true;
+        this.editingRequestId = request.id;
+        this.newRequest = { ...request };
+      },
+      async updateRequest() {
+        const requestDoc = doc(db, "borrowRequests", this.editingRequestId);
+        await updateDoc(requestDoc, this.newRequest);
+        this.isEditing = false;
+        this.editingRequestId = null;
+        this.newRequest = { component: "", quantity: 1 };
+        await this.fetchBorrowRequests();
+      },
+      async deleteRequest(requestId) {
+        await deleteDoc(doc(db, "borrowRequests", requestId));
+        await this.fetchBorrowRequests();
+      },
     },
     
     watch: {

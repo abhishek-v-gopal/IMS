@@ -29,7 +29,7 @@
             <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profile</a>
             <a href="#" v-if="userRole === 'admin'" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Admin Dashboard</a>
             <a href="#" v-if="userRole === 'manager' || userRole === 'admin'" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Manage Inventory</a>
-            <a href="#" @click="$emit('logout')" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
+            <a href="#" @click="logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
           </div>
         </div>
         <button class="md:hidden" @click="isMobileMenuOpen = !isMobileMenuOpen">
@@ -42,16 +42,19 @@
     <!-- Mobile menu -->
     <div v-if="isMobileMenuOpen" class="md:hidden bg-white border-t">
       <div class="px-2 pt-2 pb-3 space-y-1">
-        <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Home</a>
-        <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Components</a>
-        <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My Borrows</a>
-        <a href="#" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">About</a>
+        <a href="/" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Home</a>
+        <a href="/components" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Components</a>
+        <a href="/borrow" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My Borrows</a>
+        <a href="/about" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">About</a>
       </div>
     </div>
   </header>
 </template>
 
 <script>
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "../firebase/config";
+
 export default {
   name: 'NavBar',
   props: {
@@ -62,7 +65,37 @@ export default {
     isMobileMenuOpen: Boolean,
     isProfileOpen: Boolean
   },
-  emits: ['show-login-modal', 'logout']
-}
+  emits: ['show-login-modal', 'logout'],
+  data() {
+    return {
+      isLoggedIn: false,
+      userName: "",
+      userRole: "",
+    };
+  },
+  created() {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        this.isLoggedIn = true;
+        this.userName = user.displayName || "User";
+        this.userRole = user.role || "user"; // Replace with actual role fetching logic
+      } else {
+        this.isLoggedIn = false;
+        this.userName = "";
+        this.userRole = "";
+      }
+    });
+  },
+  methods: {
+    async logout() {
+      try {
+        await signOut(auth);
+        this.$emit('logout');
+      } catch (error) {
+        console.error("Error logging out:", error);
+      }
+    }
+  }
+};
 </script>
 

@@ -15,7 +15,7 @@
       <section class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-16">
         <div class="container mx-auto px-4">
           <div class="max-w-3xl mx-auto text-center">
-            <h2 class="text-3xl md:text-4xl font-bold mb-4">Component Library Management System</h2>
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">Component Management System</h2>
             <p class="text-lg mb-8">Borrow electronic components, return them when you're done, and track your projects - all in one place.</p>
             <div class="flex flex-col sm:flex-row justify-center gap-4">
               <button class="px-6 py-3 bg-white text-emerald-600 rounded-md font-medium hover:bg-gray-100 transition">
@@ -178,26 +178,25 @@
               <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <input type="password" id="password" v-model="loginForm.password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <input type="checkbox" id="remember" v-model="loginForm.remember" class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded" />
-                <label for="remember" class="ml-2 block text-sm text-gray-700">Remember me</label>
-              </div>
-              <a href="#" class="text-sm text-emerald-600 hover:text-emerald-500">Forgot password?</a>
-            </div>
             <button @click="login" class="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 transition">Login</button>
           </div>
           <div class="mt-4 text-center text-sm text-gray-600">
-            Don't have an account? <a href="#" class="text-emerald-600 hover:text-emerald-500">Register</a>
+            Don't have an account? 
+            <button 
+              @click="showLoginModal = false; showRegistrationModal = true" 
+              class="text-emerald-600 hover:text-emerald-500"
+            >
+              Register
+            </button>
           </div>
         </div>
       </div>
       <!-- Register modal -->
-       <div v-if="showLoginModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
+       <div v-if="showRegistrationModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">Login</h3>
-            <button @click="showLoginModal = false" class="text-gray-500 hover:text-gray-700">
+            <h3 class="text-xl font-bold text-gray-800">Registration</h3>
+            <button @click="showRegistrationModal = false" class="text-gray-500 hover:text-gray-700">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -205,24 +204,25 @@
           </div>
           <div class="space-y-4">
             <div>
+              <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input type="text" id="name" v-model="registrationForm.name" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+              <input type="tel" id="phone" v-model="registrationForm.phone" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
               <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" id="email" v-model="loginForm.email" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="email" id="email" v-model="registrationForm.email" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
             <div>
               <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input type="password" id="password" v-model="loginForm.password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <input type="checkbox" id="remember" v-model="loginForm.remember" class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded" />
-                <label for="remember" class="ml-2 block text-sm text-gray-700">Remember me</label>
-              </div>
-              <a href="#" class="text-sm text-emerald-600 hover:text-emerald-500">Forgot password?</a>
-            </div>
-            <button @click="login" class="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 transition">Login</button>
+              <input type="password" id="password" v-model="registrationForm.password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>            
+            <button @click="register" class="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 transition">Register</button>
           </div>
           <div class="mt-4 text-center text-sm text-gray-600">
-            Don't have an account? <a href="#" class="text-emerald-600 hover:text-emerald-500">Register</a>
+            Already have an account? <button @click="showRegistrationModal = false; showLoginModal = true" class="text-emerald-600 hover:text-emerald-500">Login</button>
           </div>
         </div>
       </div>
@@ -236,7 +236,9 @@
   <script>
 import NavBar from '../components/NavBar.vue'
 import Footer from '../components/Footer.vue'
-
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase/config";
 
 export default {
   name: 'HomeView',
@@ -247,15 +249,22 @@ export default {
   data() {
     return {
       isLoggedIn: false,
-      userName: 'John Doe',
-      userRole: 'user', // 'user', 'manager', or 'admin'
+      userRole: null,
+      userName: "",
       isMobileMenuOpen: false,
       isProfileOpen: false,
       showLoginModal: false,
+      showRegistrationModal: false,
       loginForm: {
         email: '',
         password: '',
         remember: false
+      },
+      registrationForm: {
+        name: '',
+        email: '',
+        phone: '',
+        password: ''
       },
       stats: {
         totalComponents: 250,
@@ -324,6 +333,22 @@ export default {
     }
   },
 
+  created() {
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        this.isLoggedIn = true;
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          this.userRole = userDoc.data().role;
+          this.userName = userDoc.data().name;
+        }
+      } else {
+        this.isLoggedIn = false;
+        this.userRole = null;
+      }
+    });
+  },
+
   computed: {
     userInitials() {
       if (!this.userName) return ''
@@ -340,21 +365,32 @@ export default {
   },
 
   methods: {
-    login() {
-      // In a real app, you would validate credentials and make an API call
-      if (this.loginForm.email && this.loginForm.password) {
+    async login() {
+      try {
+        await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password);
+        this.showLoginModal = false;
+        alert("Login successful!");
+      } catch (error) {
+        console.error("Error logging in:", error);
+        alert("Failed to login. Please check your credentials.");
+      }
+    },
+    register() {
+      // In a real app, you would validate the registration form and make an API call
+      if (this.registrationForm.name && this.registrationForm.email && this.registrationForm.phone && this.registrationForm.password) {
         this.isLoggedIn = true
+        this.userName = this.registrationForm.name
 
         // Simulate different user roles based on email
-        if (this.loginForm.email.includes('admin')) {
+        if (this.registrationForm.email.includes('admin')) {
           this.userRole = 'admin'
-        } else if (this.loginForm.email.includes('manager')) {
+        } else if (this.registrationForm.email.includes('manager')) {
           this.userRole = 'manager'
         } else {
           this.userRole = 'user'
         }
 
-        this.showLoginModal = false
+        this.showRegistrationModal = false
       }
     },
     logout() {
