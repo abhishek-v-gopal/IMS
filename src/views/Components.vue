@@ -116,9 +116,9 @@
               <div class="flex justify-between items-start">
                 <h3 class="font-medium text-gray-800">{{ component.name || 'Unnamed Component' }}</h3>
                 <span 
-                  :class="`px-2 py-1 text-xs rounded-full ${component.available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`"
+                  :class="`px-2 py-1 text-xs rounded-full ${component.available > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`"
                 >
-                  {{ component.available ? 'Available' : 'Not Available' }}
+                  {{ component.available > 0 ? 'Available' : 'Not Available' }}
                 </span>
               </div>
               <div class="mt-1 text-xs text-gray-500">Category: {{ component.category || 'Uncategorized' }}</div>
@@ -148,8 +148,8 @@
                   </button>
                   <button 
                     @click="borrowComponent(component)"
-                    :disabled="!component.available || !isLoggedIn"
-                    :class="`px-3 py-1 rounded text-sm ${component.available && isLoggedIn ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`"
+                    :disabled="component.available <= 0 || !isLoggedIn"
+                    :class="`px-3 py-1 rounded text-sm ${component.available > 0 && isLoggedIn ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`"
                   >
                     {{ isLoggedIn ? 'Borrow' : 'Login to Borrow' }}
                   </button>
@@ -166,37 +166,57 @@
   <div v-if="showBorrowModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
       <div class="flex justify-between items-center mb-4">
-        <h3 class="text-xl font-bold text-gray-800">Borrow Component</h3>
+        <h3 class="text-xl font-bold text-gray-800">Borrow Request</h3>
         <button @click="closeBorrowModal" class="text-gray-500 hover:text-gray-700">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-      <div class="space-y-4">
+      <form @submit.prevent="submitBorrowRequest" class="space-y-4">
         <div>
-          <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+          <label for="borrowComponentName" class="block text-sm font-medium text-gray-700">Component Name</label>
           <input 
-            type="number" 
-            id="quantity" 
-            v-model="borrowForm.quantity" 
-            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            min="1"
-            :max="selectedComponent.stock"
+            type="text" 
+            id="borrowComponentName" 
+            v-model="borrowRequestForm.componentName" 
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+            readonly 
           />
         </div>
+        <div>
+          <label for="borrowQuantity" class="block text-sm font-medium text-gray-700">Quantity</label>
+          <input 
+            type="number" 
+            id="borrowQuantity" 
+            v-model="borrowRequestForm.quantity" 
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+            min="1" 
+            required 
+          />
+        </div>
+        <div>
+          <label for="borrowReason" class="block text-sm font-medium text-gray-700">Reason</label>
+          <textarea 
+            id="borrowReason" 
+            v-model="borrowRequestForm.reason" 
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+            rows="3" 
+            required
+          ></textarea>
+        </div>
         <button 
-          @click="confirmBorrow"
+          type="submit" 
           class="w-full bg-emerald-600 text-white py-2 rounded-md hover:bg-emerald-700 transition"
         >
-          Confirm Borrow
+          Submit Request
         </button>
-      </div>
+      </form>
     </div>
   </div>
 
   <!-- Borrow Request Form -->
-  <div v-if="isLoggedIn" class="container mx-auto px-4 py-8">
+  <!-- <div v-if="isLoggedIn" class="container mx-auto px-4 py-8">
     <h2 class="text-xl font-bold text-gray-800 mb-4">Borrow Request Form</h2>
     <form @submit.prevent="submitBorrowRequest" class="bg-white p-6 rounded-lg shadow-md">
       <div class="mb-4">
@@ -237,7 +257,7 @@
         Submit Request
       </button>
     </form>
-  </div>
+  </div> -->
 
   <!-- Pagination -->
   <div class="mt-8 flex items-center justify-between">
@@ -517,6 +537,7 @@ export default {
           manufacturer: doc.data().manufacturer || 'Unknown', // Default manufacturer
           datasheet: doc.data().datasheet || '' // Default datasheet
         }));
+        console.log
         this.loading = false;
       } catch (error) {
         console.error('Error fetching components:', error);
@@ -591,9 +612,13 @@ export default {
     },
 
     borrowComponent(component) {
-      this.selectedComponent = component;
-      this.borrowForm.quantity = 1;
-      this.showBorrowModal = true;
+      this.selectedComponent = component; // Ensure selectedComponent is set
+      this.borrowRequestForm = {
+        componentName: component.name || 'Unnamed Component', // Ensure component name is set
+        quantity: 1, // Default quantity
+        reason: '' // Empty reason
+      };
+      this.showBorrowModal = true; // Show the borrow request form
     },
 
     async confirmBorrow() {
@@ -626,26 +651,42 @@ export default {
 
     closeBorrowModal() {
       this.showBorrowModal = false;
-      this.selectedComponent = null;
-      this.borrowForm.quantity = 1;
+      this.borrowRequestForm = { componentName: '', quantity: 1, reason: '' }; // Reset form
     },
 
     async submitBorrowRequest() {
       try {
+        const auth = getAuth();
+        const user = auth.currentUser; // Retrieve the logged-in user
+        if (!user) {
+          alert("You must be logged in to submit a borrow request.");
+          return;
+        }
+
+        if (!this.selectedComponent) {
+          alert("No component selected for borrowing.");
+          return;
+        }
+
         const borrowRequest = {
           userName: this.userName,
-          userId: this.userId, // Assuming userId is available
+          userId: user.uid, // Use the logged-in user's ID
           componentName: this.borrowRequestForm.componentName,
+          componentId: this.selectedComponent.id, // Include component ID
           quantity: this.borrowRequestForm.quantity,
           reason: this.borrowRequestForm.reason,
           requestDate: new Date(),
-          status: 'Pending'
+          status: 'Pending', // Ensure status is set to Pending
+          type: 'borrow', // Ensure type is set to borrow
+          dueDate: null, // Due date will be set upon approval
+          returned: false // Track if the component is returned
         };
 
-        await addDoc(collection(db, 'borrowRequests'), borrowRequest);
+        await addDoc(collection(db, 'borrows'), borrowRequest);
 
         alert('Borrow request submitted successfully!');
         this.borrowRequestForm = { componentName: '', quantity: 1, reason: '' }; // Reset form
+        this.showBorrowModal = false; // Close the borrow request form
       } catch (error) {
         console.error('Error submitting borrow request:', error);
         alert('Failed to submit borrow request. Please try again.');
@@ -680,7 +721,7 @@ export default {
         console.error('Logout failed:', error);
         alert('Failed to logout. Please try again.');
       }
-    },
+    }
   }
 }
 </script>

@@ -68,6 +68,17 @@
           />
         </div>
         <div>
+          <label for="available" class="block text-sm font-medium text-gray-700 mb-1">Available</label>
+          <input 
+            type="number" 
+            id="available" 
+            v-model="componentForm.available" 
+            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            min="0"
+            required 
+          />
+        </div>
+        <div>
           <label for="image" class="block text-sm font-medium text-gray-700 mb-1">Upload Image</label>
           <input 
             type="file" 
@@ -102,6 +113,7 @@
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -116,9 +128,13 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-500">{{ component.stock }}</div>
               </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-500">{{ component.available }}</div>
+              </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button @click="editComponent(component)" class="text-blue-600 hover:text-blue-900 mr-4">Edit</button>
                 <button @click="deleteComponent(component.id)" class="text-red-600 hover:text-red-900">Delete</button>
+                <button @click="borrowComponent(component.id)" class="text-green-600 hover:text-green-900 ml-4">Borrow</button>
               </td>
             </tr>
           </tbody>
@@ -158,7 +174,8 @@ export default {
         description: '',
         category: '',
         stock: 0,
-        image: null // Store the uploaded image URL
+        available: 0, // New variable for borrowable stock
+        image: null
       },
       isEditing: false,
       editingComponentId: null,
@@ -171,7 +188,11 @@ export default {
   methods: {
     async fetchComponents() {
       const snapshot = await getDocs(collection(db, "components"));
-      this.components = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      this.components = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        available: doc.data().available || doc.data().stock || 0, // Initialize available with stock if not defined
+      }));
     },
     handleImageUpload(event) {
       this.selectedImageFile = event.target.files[0];
@@ -191,6 +212,11 @@ export default {
           this.componentForm.image = imageUrl;
         }
 
+        // Ensure available is not greater than stock
+        if (this.componentForm.available > this.componentForm.stock) {
+          this.componentForm.available = this.componentForm.stock;
+        }
+
         // Add the component to Firestore
         await addDoc(collection(db, "components"), this.componentForm);
 
@@ -200,6 +226,7 @@ export default {
           description: '',
           category: '',
           stock: 0,
+          available: 0,
           image: null
         };
         this.selectedImageFile = null;
@@ -216,6 +243,10 @@ export default {
     },
     async updateComponent() {
       const componentDoc = doc(db, "components", this.editingComponentId);
+      // Ensure available is not greater than stock
+      if (this.componentForm.available > this.componentForm.stock) {
+        this.componentForm.available = this.componentForm.stock;
+      }
       await updateDoc(componentDoc, this.componentForm);
       this.isEditing = false;
       this.editingComponentId = null;
@@ -224,6 +255,7 @@ export default {
         description: '',
         category: '',
         stock: 0,
+        available: 0,
         image: null
       };
       await this.fetchComponents();
@@ -231,6 +263,17 @@ export default {
     async deleteComponent(componentId) {
       await deleteDoc(doc(db, "components", componentId));
       await this.fetchComponents();
+    },
+    async borrowComponent(componentId) {
+      const component = this.components.find(c => c.id === componentId);
+      if (component && component.available > 0) {
+        const componentDoc = doc(db, "components", componentId);
+        await updateDoc(componentDoc, { available: component.available - 1 });
+        await this.fetchComponents();
+        alert("Component borrowed successfully!");
+      } else {
+        alert("No available stock to borrow.");
+      }
     },
     cancelEdit() {
       this.isEditing = false;
@@ -240,6 +283,7 @@ export default {
         description: '',
         category: '',
         stock: 0,
+        available: 0,
         image: null
       };
     },

@@ -88,12 +88,22 @@
                 <p class="text-sm text-gray-600 mt-1">{{ component.description }}</p>
                 <div class="mt-4 flex justify-between items-center">
                   <span class="text-sm text-gray-500">Stock: {{ component.stock }}</span>
-                  <button 
+                  <!-- <button 
                     :disabled="!component.available || !isLoggedIn" 
                     :class="`px-3 py-1 rounded text-sm ${component.available && isLoggedIn ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`"
                   >
                     {{ isLoggedIn ? 'Borrow' : 'Login to Borrow' }}
-                  </button>
+                  </button> -->
+                  <a href="/components"
+                    class="px-3 py-1 rounded text-sm bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    Borrow
+                  </a>
+                  <!-- <button 
+                    class="px-3 py-1 rounded text-sm bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                  Borrow
+                  </button> -->
                 </div>
               </div>
             </div>
@@ -234,11 +244,10 @@
   </template>
   
   <script>
-import NavBar from '../components/NavBar.vue'
-import Footer from '../components/Footer.vue'
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../firebase/config";
+import NavBar from '../components/NavBar.vue';
+import Footer from '../components/Footer.vue';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 export default {
   name: 'HomeView',
@@ -267,139 +276,130 @@ export default {
         password: ''
       },
       stats: {
-        totalComponents: 250,
-        availableComponents: 180,
-        activeUsers: 45
+        totalComponents: 0,
+        availableComponents: 0,
+        activeUsers: 45 // Placeholder for active users
       },
-      components: [
-        {
-          name: 'Arduino Uno',
-          description: 'Microcontroller board based on the ATmega328P',
-          image: 'https://via.placeholder.com/150?text=Arduino+Uno',
-          available: true,
-          stock: 15
-        },
-        {
-          name: 'Raspberry Pi 4',
-          description: 'Single-board computer with 4GB RAM',
-          image: 'https://via.placeholder.com/150?text=Raspberry+Pi',
-          available: true,
-          stock: 8
-        },
-        {
-          name: 'ESP32 Dev Board',
-          description: 'Dual-core microcontroller with WiFi & Bluetooth',
-          image: 'https://via.placeholder.com/150?text=ESP32',
-          available: false,
-          stock: 0
-        },
-        {
-          name: 'Ultrasonic Sensor',
-          description: 'HC-SR04 distance measuring sensor',
-          image: 'https://via.placeholder.com/150?text=Ultrasonic',
-          available: true,
-          stock: 20
-        },
-        {
-          name: 'Servo Motor',
-          description: 'SG90 9g micro servo motor',
-          image: 'https://via.placeholder.com/150?text=Servo',
-          available: true,
-          stock: 12
-        },
-        {
-          name: 'LED Kit',
-          description: 'Assorted LEDs in different colors',
-          image: 'https://via.placeholder.com/150?text=LED+Kit',
-          available: true,
-          stock: 30
-        },
-        {
-          name: 'Breadboard',
-          description: 'Solderless breadboard for prototyping',
-          image: 'https://via.placeholder.com/150?text=Breadboard',
-          available: true,
-          stock: 25
-        },
-        {
-          name: 'Resistor Kit',
-          description: 'Various resistors for electronic circuits',
-          image: 'https://via.placeholder.com/150?text=Resistors',
-          available: true,
-          stock: 50
-        }
-      ],
+      components: [], // Dynamic components list
       searchQuery: ''
+    };
+  },
+  async created() {
+    try {
+      await this.fetchComponents();
+    } catch (error) {
+      console.error("Error during component fetch:", error);
     }
   },
-
-  created() {
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        this.isLoggedIn = true;
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          this.userRole = userDoc.data().role;
-          this.userName = userDoc.data().name;
-        }
-      } else {
-        this.isLoggedIn = false;
-        this.userRole = null;
-      }
-    });
-  },
-
   computed: {
     userInitials() {
-      if (!this.userName) return ''
-      return this.userName.split(' ').map(n => n[0]).join('').toUpperCase()
+      if (!this.userName) return '';
+      return this.userName.split(' ').map(n => n[0]).join('').toUpperCase();
     },
     filteredComponents() {
-      if (!this.searchQuery) return this.components
-      const query = this.searchQuery.toLowerCase()
-      return this.components.filter(component => 
-        component.name.toLowerCase().includes(query) || 
+      if (!this.searchQuery) return this.components;
+      const query = this.searchQuery.toLowerCase();
+      return this.components.filter(component =>
+        component.name.toLowerCase().includes(query) ||
         component.description.toLowerCase().includes(query)
-      )
+      );
     }
   },
-
   methods: {
+    async fetchComponents() {
+      try {
+        const componentsSnapshot = await getDocs(collection(db, 'components'));
+        this.components = componentsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          image: doc.data().image || 'https://via.placeholder.com/150?text=No+Image',
+          name: doc.data().name || 'Unnamed Component',
+          description: doc.data().description || 'No description available',
+          stock: doc.data().stock || 0,
+          available: doc.data().available || 0
+        }));
+        this.stats.totalComponents = this.components.length;
+        this.stats.availableComponents = this.components.filter(c => c.available > 0).length;
+      } catch (error) {
+        console.error('Error fetching components:', error);
+        alert('Failed to load components. Please try again later.');
+      }
+    },
     async login() {
       try {
-        await signInWithEmailAndPassword(auth, this.loginForm.email, this.loginForm.password);
+        // Import Firebase authentication
+        const { getAuth, signInWithEmailAndPassword } = await import('firebase/auth');
+        const auth = getAuth();
+        
+        // Validate inputs
+        if (!this.loginForm.email || !this.loginForm.password) {
+          alert("Please enter both email and password.");
+          return;
+        }
+        
+        // Attempt to sign in with Firebase Auth
+        const userCredential = await signInWithEmailAndPassword(
+          auth, 
+          this.loginForm.email, 
+          this.loginForm.password
+        );
+        
+        // Check if auth was successful and user was returned
+        const user = userCredential.user;
+        if (!user) {
+          throw new Error("Authentication succeeded but no user was returned");
+        }
+        
+        console.log("Authentication successful. User ID:", user.uid);
+        
+        // Update the UI state
+        this.isLoggedIn = true;
+        this.userName = user.displayName || this.loginForm.email.split('@')[0];
+        this.userRole = this.loginForm.email.includes('admin') ? 'admin' : 'user';
         this.showLoginModal = false;
-        alert("Login successful!");
+        
+        // Verify the current user is set correctly
+        const currentUser = auth.currentUser;
+        if (currentUser && currentUser.uid === user.uid) {
+          console.log("User is correctly saved in auth state");
+          alert("Login successful!");
+        } else {
+          console.error("User authentication state mismatch");
+          alert("Login partially successful. Please try again if you experience any issues.");
+        }
       } catch (error) {
         console.error("Error logging in:", error);
-        alert("Failed to login. Please check your credentials.");
+        alert(`Login failed: ${error.message || "Unknown error"}`);
       }
     },
     register() {
-      // In a real app, you would validate the registration form and make an API call
       if (this.registrationForm.name && this.registrationForm.email && this.registrationForm.phone && this.registrationForm.password) {
-        this.isLoggedIn = true
-        this.userName = this.registrationForm.name
+        this.isLoggedIn = true;
+        this.userName = this.registrationForm.name;
 
         // Simulate different user roles based on email
         if (this.registrationForm.email.includes('admin')) {
-          this.userRole = 'admin'
+          this.userRole = 'admin';
         } else if (this.registrationForm.email.includes('manager')) {
-          this.userRole = 'manager'
+          this.userRole = 'manager';
         } else {
-          this.userRole = 'user'
+          this.userRole = 'user';
         }
 
-        this.showRegistrationModal = false
+        this.showRegistrationModal = false;
+        alert("Registration successful!");
+      } else {
+        alert("Please fill in all required fields.");
       }
     },
     logout() {
-      this.isLoggedIn = false
-      this.userRole = 'user'
-      this.isProfileOpen = false
+      this.isLoggedIn = false;
+      this.userRole = 'user';
+      this.isProfileOpen = false;
+      alert("Successfully logged out.");
     }
   }
-}
+};
 </script>
   
   <style scoped>

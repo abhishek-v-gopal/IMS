@@ -16,7 +16,7 @@ const routes = [
   { path: '/components', component: Components },
   { path: '/borrow', component: BorrowView },
   { path: '/about', component: About },
-  { path: '/admin', component: AdminPanel, meta: { requiresRole: "admin" } },
+  { path: '/admin', component: AdminPanel },
   { path: '/addcomponent', component: AddComponent },
   { path: '/managerequest', component: ManageRequest },
   { path: '/managestaff', component: ManageStaff },

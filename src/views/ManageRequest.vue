@@ -662,8 +662,8 @@
   </template>
   
   <script>
-  import NavBar from '../components/NavBar.vue'
-  import Footer from '../components/Footer.vue'
+  import NavBar from '../components/NavBar.vue';
+  import Footer from '../components/Footer.vue';
   import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
   import { db } from "../firebase/config";
   
@@ -701,193 +701,434 @@
         },
         
         // Sample data
-        requests: []
+        requests: [], // Array to store all borrow requests
+
+        // Initialize stats values
+        approvedToday: 0,
+        rejectedToday: 0,
+        overdueReturns: 0,
       }
     },
     async created() {
-      const requestSnapshot = await getDocs(collection(db, "requests"));
-      this.requests = requestSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      try {
+        console.log("Fetching borrow requests...");
+        const requestSnapshot = await getDocs(collection(db, "borrowRequests")); // Fetch borrow requests
+        console.log("Borrow requests fetched:", requestSnapshot);
+    
+        const fetchedRequests = requestSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          // Create component and user objects for UI display based on the actual data structure
+          return {
+            id: doc.id,
+            ...data,
+            component: {
+              name: data.componentName || 'Unknown Component',
+              image: 'https://via.placeholder.com/100' // Default image since componentImage doesn't exist
+            },
+            user: {
+              name: data.userName || 'Unknown User',
+              email: data.userId || 'No email provided' // Use userId as email since userEmail doesn't exist
+            }
+          };
+        });
+        console.log("Fetched requests array:", fetchedRequests);
+    
+        // Ensure the fetched data is reactive
+        this.requests.splice(0, this.requests.length, ...fetchedRequests);
+        console.log("Reactive requests:", this.requests);
+        
+        // Calculate stats right after loading data
+        this.calculateStats();
+      } catch (error) {
+        console.error("Error fetching borrow requests:", error);
+      }
     },
     computed: {
       pendingRequests() {
-        return this.requests.filter(request => request.status === 'Pending')
+        // Make sure we're strictly comparing with the string 'Pending'
+        const pending = this.requests.filter(request => request.status === 'Pending');
+        console.log("Filtered Pending Requests:", pending); // Debug log pending requests
+        return pending;
       },
-      
       approvedRequests() {
-        return this.requests.filter(request => request.status === 'Approved')
-      },
-      
-      rejectedRequests() {
-        return this.requests.filter(request => request.status === 'Rejected')
-      },
-      
-      overdueRequestsList() {
-        const today = new Date()
-        return this.requests.filter(request => 
-          request.status === 'Approved' && 
-          request.type === 'borrow' && 
-          !request.returned && 
-          request.dueDate < today
-        )
-      },
-      
-      allRequests() {
-        return [...this.requests].sort((a, b) => b.requestDate - a.requestDate)
-      },
-      
-      filteredRequests() {
-        let result = this.pendingRequests
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const approved = this.requests.filter(request => request.status === 'Approved');
         
-        // Apply search filter
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase()
-          result = result.filter(request => 
-            request.component.name.toLowerCase().includes(query) || 
-            request.user.name.toLowerCase().includes(query) ||
-            request.user.email.toLowerCase().includes(query)
-          )
-        }
-        
-        // Apply request type filter
-        if (this.requestTypeFilter) {
-          result = result.filter(request => request.type === this.requestTypeFilter)
-        }
-        
-        // Apply date filter
-        if (this.dateFilter) {
-          const today = new Date()
-          today.setHours(0, 0, 0, 0)
+        // Count today's approved requests for the stats card
+        this.approvedToday = approved.filter(request => {
+          if (!request.approvalDate) return false;
           
-          if (this.dateFilter === 'today') {
-            result = result.filter(request => {
-              const requestDate = new Date(request.requestDate)
-              requestDate.setHours(0, 0, 0, 0)
-              return requestDate.getTime() === today.getTime()
-            })
-          } else if (this.dateFilter === 'week') {
-            const weekStart = new Date(today)
-            weekStart.setDate(today.getDate() - today.getDay())
-            
-            result = result.filter(request => {
-              const requestDate = new Date(request.requestDate)
-              return requestDate >= weekStart
-            })
-          } else if (this.dateFilter === 'month') {
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-            
-            result = result.filter(request => {
-              const requestDate = new Date(request.requestDate)
-              return requestDate >= monthStart
-            })
+          let approvalDate;
+          if (request.approvalDate.seconds) {
+            approvalDate = new Date(request.approvalDate.seconds * 1000);
+          } else {
+            approvalDate = new Date(request.approvalDate);
           }
+          
+          approvalDate.setHours(0, 0, 0, 0);
+          return approvalDate.getTime() === today.getTime();
+        }).length;
+        
+        console.log("Approved Requests:", approved);
+        return approved;
+      },
+      rejectedRequests() {
+        const rejected = this.requests.filter(request => request.status === 'Rejected');
+        console.log("Rejected Requests:", rejected); // Debugging
+        return rejected;
+      },
+      overdueRequestsList() {
+        const today = new Date();
+        const overdue = this.requests.filter(request => {
+          if (request.status !== 'Approved' || !request.dueDate) return false;
+          
+          // Convert Firestore timestamp to Date
+          let dueDate;
+          if (request.dueDate.seconds) {
+            dueDate = new Date(request.dueDate.seconds * 1000);
+          } else {
+            dueDate = new Date(request.dueDate);
+          }
+          
+          return dueDate < today;
+        });
+        
+        // Set overdueReturns for the stats card
+        this.overdueReturns = overdue.length;
+        
+        console.log("Overdue Requests:", overdue);
+        return overdue;
+      },
+      allRequests() {
+        const sorted = [...this.requests].sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
+        console.log("All Requests:", sorted); // Debugging
+        return sorted;
+      },
+      filteredRequests() {
+        // For the pending tab, we need to make sure only pending requests are shown
+        if (this.activeTab === 'pending') {
+          let result = this.requests.filter(request => request.status === 'Pending');
+          
+          // Then apply additional filters from search, type, and date
+          if (this.searchQuery) {
+            const query = this.searchQuery.toLowerCase();
+            result = result.filter(request =>
+              request.componentName?.toLowerCase().includes(query) ||
+              request.userName?.toLowerCase().includes(query)
+            );
+          }
+      
+          // Apply request type filter
+          if (this.requestTypeFilter) {
+            result = result.filter(request => request.type === this.requestTypeFilter);
+          }
+      
+          // Apply date filter
+          if (this.dateFilter) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+      
+            if (this.dateFilter === 'today') {
+              result = result.filter(request => {
+                if (!request.requestDate) return false;
+                
+                // Handle Firestore Timestamp objects
+                let requestDate;
+                if (request.requestDate.seconds) { // Firestore Timestamp
+                  requestDate = new Date(request.requestDate.seconds * 1000);
+                } else { // Regular Date
+                  requestDate = new Date(request.requestDate);
+                }
+                
+                requestDate.setHours(0, 0, 0, 0);
+                return requestDate.getTime() === today.getTime();
+              });
+            } else if (this.dateFilter === 'week') {
+              const weekStart = new Date(today);
+              weekStart.setDate(today.getDate() - today.getDay());
+      
+              result = result.filter(request => {
+                if (!request.requestDate) return false;
+                
+                // Handle Firestore Timestamp objects
+                let requestDate;
+                if (request.requestDate.seconds) { // Firestore Timestamp
+                  requestDate = new Date(request.requestDate.seconds * 1000);
+                } else { // Regular Date
+                  requestDate = new Date(request.requestDate);
+                }
+                
+                return requestDate >= weekStart;
+              });
+            } else if (this.dateFilter === 'month') {
+              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+              result = result.filter(request => {
+                if (!request.requestDate) return false;
+                
+                // Handle Firestore Timestamp objects
+                let requestDate;
+                if (request.requestDate.seconds) { // Firestore Timestamp
+                  requestDate = new Date(request.requestDate.seconds * 1000);
+                } else { // Regular Date
+                  requestDate = new Date(request.requestDate);
+                }
+                
+                return requestDate >= monthStart;
+              });
+            }
+          }
+          
+          console.log("Final filtered pending requests:", result);
+          return result;
+        } else {
+          let result = this.requests;
+    
+          // Apply search filter
+          if (this.searchQuery) {
+            const query = this.searchQuery.toLowerCase();
+            result = result.filter(request =>
+              request.componentName?.toLowerCase().includes(query) ||
+              request.userName?.toLowerCase().includes(query)
+            );
+          }
+      
+          // Apply request type filter
+          if (this.requestTypeFilter) {
+            result = result.filter(request => request.type === this.requestTypeFilter);
+          }
+      
+          // Apply date filter
+          if (this.dateFilter) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+      
+            if (this.dateFilter === 'today') {
+              result = result.filter(request => {
+                if (!request.requestDate) return false;
+                
+                // Handle Firestore Timestamp objects
+                let requestDate;
+                if (request.requestDate.seconds) { // Firestore Timestamp
+                  requestDate = new Date(request.requestDate.seconds * 1000);
+                } else { // Regular Date
+                  requestDate = new Date(request.requestDate);
+                }
+                
+                requestDate.setHours(0, 0, 0, 0);
+                return requestDate.getTime() === today.getTime();
+              });
+            } else if (this.dateFilter === 'week') {
+              const weekStart = new Date(today);
+              weekStart.setDate(today.getDate() - today.getDay());
+      
+              result = result.filter(request => {
+                if (!request.requestDate) return false;
+                
+                // Handle Firestore Timestamp objects
+                let requestDate;
+                if (request.requestDate.seconds) { // Firestore Timestamp
+                  requestDate = new Date(request.requestDate.seconds * 1000);
+                } else { // Regular Date
+                  requestDate = new Date(request.requestDate);
+                }
+                
+                return requestDate >= weekStart;
+              });
+            } else if (this.dateFilter === 'month') {
+              const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+              result = result.filter(request => {
+                if (!request.requestDate) return false;
+                
+                // Handle Firestore Timestamp objects
+                let requestDate;
+                if (request.requestDate.seconds) { // Firestore Timestamp
+                  requestDate = new Date(request.requestDate.seconds * 1000);
+                } else { // Regular Date
+                  requestDate = new Date(request.requestDate);
+                }
+                
+                return requestDate >= monthStart;
+              });
+            }
+          }
+      
+          console.log("Filtered Requests:", result); // Debugging
+          return result;
         }
-        
-        return result
-      },
-      
-      approvedToday() {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        
-        return this.requests.filter(request => {
-          if (!request.approvalDate) return false
-          const approvalDate = new Date(request.approvalDate)
-          approvalDate.setHours(0, 0, 0, 0)
-          return approvalDate.getTime() === today.getTime()
-        }).length
-      },
-      
-      rejectedToday() {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        
-        return this.requests.filter(request => {
-          if (!request.rejectionDate) return false
-          const rejectionDate = new Date(request.rejectionDate)
-          rejectionDate.setHours(0, 0, 0, 0)
-          return rejectionDate.getTime() === today.getTime()
-        }).length
-      },
-      
-      overdueReturns() {
-        return this.overdueRequestsList.length
       }
     },
     methods: {
       formatDate(date) {
-        if (!date) return ''
-        const options = { year: 'numeric', month: 'short', day: 'numeric' }
-        return new Date(date).toLocaleDateString('en-US', options)
+        if (!date) return '';
+        
+        // Handle Firestore Timestamp objects
+        let dateObj;
+        if (date.seconds) { // Firestore Timestamp
+          dateObj = new Date(date.seconds * 1000);
+        } else { // Regular Date
+          dateObj = new Date(date);
+        }
+        
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return dateObj.toLocaleDateString('en-US', options);
       },
       
       formatTime(date) {
-        if (!date) return ''
-        const options = { hour: '2-digit', minute: '2-digit' }
-        return new Date(date).toLocaleTimeString('en-US', options)
+        if (!date) return '';
+        
+        // Handle Firestore Timestamp objects
+        let dateObj;
+        if (date.seconds) { // Firestore Timestamp
+          dateObj = new Date(date.seconds * 1000);
+        } else { // Regular Date
+          dateObj = new Date(date);
+        }
+        
+        const options = { hour: '2-digit', minute: '2-digit' };
+        return dateObj.toLocaleTimeString('en-US', options);
       },
       
       getDaysOverdue(dueDate) {
-        if (!dueDate) return 0
-        const today = new Date()
-        const due = new Date(dueDate)
-        const diffTime = Math.abs(today - due)
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        if (!dueDate) return 0;
+        
+        const today = new Date();
+        let due;
+        
+        // Convert Firestore timestamp to Date
+        if (dueDate.seconds) {
+          due = new Date(dueDate.seconds * 1000);
+        } else {
+          due = new Date(dueDate);
+        }
+        
+        const diffTime = today - due;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       },
       
       getStatusClass(status) {
         switch (status) {
           case 'Pending':
-            return 'bg-amber-100 text-amber-800'
+            return 'bg-amber-100 text-amber-800';
           case 'Approved':
-            return 'bg-green-100 text-green-800'
+            return 'bg-green-100 text-green-800';
           case 'Rejected':
-            return 'bg-red-100 text-red-800'
+            return 'bg-red-100 text-red-800';
           default:
-            return 'bg-gray-100 text-gray-800'
+            return 'bg-gray-100 text-gray-800';
         }
       },
       
       viewRequestDetails(request) {
-        this.selectedRequest = request
-        this.showRequestModal = true
+        // If component object doesn't have image or has incorrect structure, fix it
+        if (!request.component || !request.component.image) {
+          request.component = {
+            name: request.componentName || 'Unknown Component',
+            image: request.componentImage || 'https://via.placeholder.com/100'
+          };
+        }
+        
+        // If user object is missing or incorrect, fix it
+        if (!request.user || !request.user.name) {
+          request.user = {
+            name: request.userName || 'Unknown User',
+            email: request.userEmail || request.userId || 'No email provided',
+            role: 'user',
+            department: 'N/A'
+          };
+        }
+        
+        this.selectedRequest = request;
+        this.showRequestModal = true;
       },
       
       async approveRequest(request) {
+        if (request.status !== 'Pending') {
+          this.showNotification('error', 'Only pending requests can be approved.');
+          return;
+        }
+    
         try {
-          const requestDoc = doc(db, "requests", request.id);
-          await updateDoc(requestDoc, { status: "Approved", approvalDate: new Date() });
+          const requestDoc = doc(db, "borrowRequests", request.id);
+          await updateDoc(requestDoc, {
+            status: "Approved",
+            approvalDate: new Date(),
+            dueDate: new Date(new Date().setDate(new Date().getDate() + 7)) // Set due date to 7 days from now
+          });
+          request.status = "Approved"; // Update local state
           this.showNotification("success", "Request approved successfully!");
         } catch (error) {
+          console.error("Error approving request:", error);
           this.showNotification("error", "Failed to approve request.");
         }
       },
       
-      rejectRequest(request) {
-        // In a real app, you would make an API call to reject the request
-        request.status = 'Rejected'
-        request.rejectionDate = new Date()
-        
-        this.showNotification('error', 'Request rejected')
+      async rejectRequest(request) {
+        if (request.status !== 'Pending') {
+          this.showNotification('error', 'Only pending requests can be rejected.');
+          return;
+        }
+    
+        try {
+          const requestDoc = doc(db, "borrowRequests", request.id);
+          await updateDoc(requestDoc, {
+            status: "Rejected",
+            rejectionDate: new Date()
+          });
+          request.status = "Rejected"; // Update local state
+          this.showNotification("error", "Request rejected successfully!");
+        } catch (error) {
+          console.error("Error rejecting request:", error);
+          this.showNotification("error", "Failed to reject request.");
+        }
+      },
+      
+      async markAsReturned(request) {
+        if (request.status !== 'Approved') {
+          this.showNotification('error', 'Only approved requests can be marked as returned.');
+          return;
+        }
+    
+        if (request.returned) {
+          this.showNotification('error', 'This request is already marked as returned.');
+          return;
+        }
+    
+        try {
+          const requestDoc = doc(db, "borrowRequests", request.id);
+          await updateDoc(requestDoc, {
+            returned: true,
+            returnDate: new Date()
+          });
+          request.returned = true; // Update local state
+          this.showNotification("success", "Component marked as returned successfully!");
+        } catch (error) {
+          console.error("Error marking as returned:", error);
+          this.showNotification("error", "Failed to mark as returned.");
+        }
       },
       
       reconsiderRequest(request) {
-        // In a real app, you would make an API call to reconsider the request
-        request.status = 'Pending'
-        request.rejectionDate = null
-        
-        this.showNotification('warning', 'Request moved back to pending')
+        if (request.status !== 'Rejected') {
+          this.showNotification('error', 'Only rejected requests can be reconsidered.');
+          return;
+        }
+    
+        request.status = 'Pending';
+        request.rejectionDate = null;
+        this.showNotification('warning', 'Request moved back to pending.');
       },
       
       sendReminder(request) {
+        if (request.status !== 'Approved' || request.returned) {
+          this.showNotification('error', 'Reminders can only be sent for approved and unreturned requests.');
+          return;
+        }
+    
         // In a real app, you would make an API call to send a reminder
-        this.showNotification('success', `Reminder sent to ${request.user.name}`)
-      },
-      
-      markAsReturned(request) {
-        // In a real app, you would make an API call to mark as returned
-        request.returned = true
-        
-        this.showNotification('success', 'Component marked as returned')
+        this.showNotification('success', `Reminder sent to ${request.user.name}`);
       },
       
       showNotification(type, message) {
@@ -895,18 +1136,78 @@
           show: true,
           type,
           message
-        }
+        };
         
         // Hide notification after 3 seconds
         setTimeout(() => {
-          this.notification.show = false
-        }, 3000)
+          this.notification.show = false;
+        }, 3000);
       },
       
       logout() {
-        this.isLoggedIn = false
-        this.userRole = 'user'
-        this.isProfileOpen = false
+        this.isLoggedIn = false;
+        this.userRole = 'user';
+        this.isProfileOpen = false;
+      },
+      
+      logRequests() {
+        console.log("Current Requests State:", this.requests);
+      },
+
+      calculateStats() {
+        // Calculate Approved Today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        this.approvedToday = this.requests.filter(request => {
+          if (!request.approvalDate || request.status !== 'Approved') return false;
+          
+          let approvalDate;
+          if (request.approvalDate.seconds) {
+            approvalDate = new Date(request.approvalDate.seconds * 1000);
+          } else {
+            approvalDate = new Date(request.approvalDate);
+          }
+          
+          approvalDate.setHours(0, 0, 0, 0);
+          return approvalDate.getTime() === today.getTime();
+        }).length;
+        
+        // Calculate Rejected Today
+        this.rejectedToday = this.requests.filter(request => {
+          if (!request.rejectionDate || request.status !== 'Rejected') return false;
+          
+          let rejectionDate;
+          if (request.rejectionDate.seconds) {
+            rejectionDate = new Date(request.rejectionDate.seconds * 1000);
+          } else {
+            rejectionDate = new Date(request.rejectionDate);
+          }
+          
+          rejectionDate.setHours(0, 0, 0, 0);
+          return rejectionDate.getTime() === today.getTime();
+        }).length;
+        
+        // Calculate Overdue Returns
+        this.overdueReturns = this.requests.filter(request => {
+          if (request.status !== 'Approved' || !request.dueDate || request.returned) return false;
+          
+          let dueDate;
+          if (request.dueDate.seconds) {
+            dueDate = new Date(request.dueDate.seconds * 1000);
+          } else {
+            dueDate = new Date(request.dueDate);
+          }
+          
+          return dueDate < new Date();
+        }).length;
+        
+        console.log("Stats calculated:", {
+          pendingCount: this.pendingRequests.length,
+          approvedToday: this.approvedToday,
+          rejectedToday: this.rejectedToday,
+          overdueReturns: this.overdueReturns
+        });
       }
     }
   }

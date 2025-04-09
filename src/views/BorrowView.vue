@@ -155,7 +155,10 @@
                 
                 <!-- Actions -->
                 <div class="flex md:flex-col justify-end gap-2 md:w-32 shrink-0">
-                  <button class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition text-sm">
+                  <button 
+                    @click="requestReturn(borrow)" 
+                    class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition text-sm"
+                  >
                     Return Component
                   </button>
                   <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition text-sm">
@@ -491,222 +494,310 @@
   </template>
   
   <script>
-  import NavBar from '../components/NavBar.vue'
-  import Footer from '../components/Footer.vue'
-  import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+  import NavBar from '../components/NavBar.vue';
+  import Footer from '../components/Footer.vue';
+  import { collection, getDocs, doc, updateDoc, query, where, addDoc } from "firebase/firestore";
   import { db } from "../firebase/config";
-  import { createUserWithEmailAndPassword } from "firebase/auth";
-  import { setDoc } from "firebase/firestore";
-  import { auth } from "../firebase/config";
+  import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
   export default {
-    name: 'RegisterModal',
+    name: 'BorrowView',
     components: {
       NavBar,
       Footer
-    },    
-    props: {
-      show: {
-        type: Boolean,
-        default: false
-      }
     },
-    
-    emits: ['close', 'register-success', 'switch-to-login'],
-    
     data() {
       return {
-        form: {
-          firstName: '',
-          lastName: '',
-          email: '',
-          studentId: '',
-          department: '',
-          password: '',
-          confirmPassword: '',
-          phone: '',
-          terms: false
+        isLoggedIn: false,
+        userName: '',
+        userRole: 'user',
+        userInitials: '',
+        userId: '',
+        isMobileMenuOpen: false,
+        isProfileOpen: false,
+        showLoginModal: false,
+        showRegisterModal: false,
+        activeTab: 'current', // 'current' or 'history'
+        searchQuery: '',
+        sortBy: 'date-desc',
+        currentBorrows: [],
+        pendingRequests: [],
+        borrowHistory: [],
+        loading: {
+          current: false,
+          history: false
         },
-        errors: {},
-        status: null,
-        isSubmitting: false,
-        borrowRequests: [],
-        newRequest: { component: "", quantity: 1 },
-        isEditing: false,
-        editingRequestId: null,
+        error: null
+      };
+    },
+    async created() {
+      this.initializeAuth();
+    },
+    methods: {
+      initializeAuth() {
+        const auth = getAuth();
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            this.isLoggedIn = true;
+            this.userName = user.displayName || user.email.split('@')[0];
+            this.userInitials = this.userName.split(' ').map(n => n[0]).join('').toUpperCase();
+            this.userRole = user.email.includes('admin') ? 'admin' : 'user';
+            this.userId = user.uid;
+            
+            // Log user ID for debugging
+            console.log("Current user ID:", this.userId);
+            console.log("Current user details:", {
+              name: this.userName,
+              email: user.email,
+              uid: user.uid,
+              role: this.userRole
+            });
+            
+            await this.fetchBorrowData(user.uid); // Fetch borrow data for the logged-in user
+          } else {
+            this.isLoggedIn = false;
+            this.userName = '';
+            this.userInitials = '';
+            this.userId = '';
+            this.currentBorrows = [];
+            this.pendingRequests = [];
+            this.borrowHistory = [];
+          }
+        });
+      },
+  
+      async fetchBorrowData(userId) {
+        if (!userId) return;
+    
+        try {
+          this.loading.current = true;
+          this.loading.history = true;
+          
+          // Log the user ID for which we're fetching data
+          console.log("Fetching borrow data for user ID:", userId);
+          
+          // Create a query to filter borrows by userId - fix collection name to "borrowRequests"
+          const borrowQuery = query(collection(db, 'borrowRequests'), where("userId", "==", userId));
+          const borrowSnapshot = await getDocs(borrowQuery);
+          
+          console.log("Fetched data:", borrowSnapshot.docs.map(doc => doc.data()));
+          
+          const allBorrows = borrowSnapshot.docs.map(doc => ({ 
+            id: doc.id,
+            ...doc.data(),
+            component: {
+              name: doc.data().componentName || 'Unknown Component',
+              image: 'https://via.placeholder.com/100', // Default image
+              description: doc.data().reason || 'No description available'
+            },
+            // Set approvalDate and requestDate for proper display
+            borrowedDate: doc.data().approvalDate || doc.data().requestDate,
+            requestId: doc.id.substring(0, 8) // Use first 8 chars of document ID as request ID
+          }));
+    
+          console.log("Processed borrow requests:", allBorrows);
+    
+          // Filter borrows based on their status
+          this.currentBorrows = allBorrows.filter(borrow => 
+            borrow.status === 'Approved' && !borrow.returned);
+          
+          this.pendingRequests = allBorrows.filter(borrow => 
+            borrow.status === 'Pending');
+          
+          this.borrowHistory = allBorrows.filter(borrow => 
+            (borrow.status === 'Approved' && borrow.returned) || 
+            borrow.status === 'Rejected');
+    
+          console.log("Current borrows:", this.currentBorrows);
+          console.log("Pending requests:", this.pendingRequests);
+          console.log("Borrow history:", this.borrowHistory);
+        } catch (error) {
+          console.error('Error fetching borrow data:', error);
+          this.error = error.message;
+        } finally {
+          this.loading.current = false;
+          this.loading.history = false;
+        }
+      },
+      
+      async requestReturn(borrow) {
+        try {
+          // Log the user ID and borrow details before making the return request
+          console.log("Requesting return for user ID:", this.userId);
+          console.log("Borrow details:", borrow);
+          
+          const borrowDoc = doc(db, "borrowRequests", borrow.id);
+          await updateDoc(borrowDoc, {
+            status: "Return Requested",
+            returnRequestDate: new Date()
+          });
+          borrow.status = "Return Requested"; // Update local state
+          
+          alert("Return request submitted successfully!");
+          
+          // Refresh data after updating
+          if (this.userId) {
+            await this.fetchBorrowData(this.userId);
+          }
+        } catch (error) {
+          console.error("Error requesting return:", error);
+          alert("Failed to submit return request. Please try again.");
+        }
+      },
+  
+      formatDate(date) {
+        if (!date) return 'N/A';
+        
+        // Handle Firestore timestamp
+        if (date && date.seconds) {
+          date = new Date(date.seconds * 1000);
+        } else if (typeof date === 'string') {
+          date = new Date(date);
+        }
+        
+        return date instanceof Date ? date.toLocaleDateString() : 'Invalid Date';
+      },
+  
+      isOverdue(dueDate) {
+        if (!dueDate) return false;
+        
+        // Handle Firestore timestamp
+        let due;
+        if (dueDate && dueDate.seconds) {
+          due = new Date(dueDate.seconds * 1000);
+        } else {
+          due = new Date(dueDate);
+        }
+        
+        return due < new Date();
+      },
+  
+      isDueSoon(dueDate) {
+        if (!dueDate) return false;
+        
+        // Handle Firestore timestamp
+        let due;
+        if (dueDate && dueDate.seconds) {
+          due = new Date(dueDate.seconds * 1000);
+        } else {
+          due = new Date(dueDate);
+        }
+        
+        const today = new Date();
+        const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+        return diffDays <= 3 && diffDays > 0;
+      },
+  
+      getStatusClass(status) {
+        switch (status) {
+          case 'Pending':
+            return 'bg-amber-100 text-amber-800';
+          case 'Approved':
+            return 'bg-green-100 text-green-800';
+          case 'Rejected':
+            return 'bg-red-100 text-red-800';
+          case 'Return Requested':
+            return 'bg-blue-100 text-blue-800';
+          case 'Overdue':
+            return 'bg-red-100 text-red-800';
+          default:
+            return 'bg-gray-100 text-gray-800';
+        }
+      },
+  
+      calculateDuration(borrowedDate, returnedDate) {
+        if (!borrowedDate || !returnedDate) return 'N/A';
+        
+        // Handle Firestore timestamps
+        let startDate, endDate;
+        
+        if (borrowedDate && borrowedDate.seconds) {
+          startDate = new Date(borrowedDate.seconds * 1000);
+        } else {
+          startDate = new Date(borrowedDate);
+        }
+        
+        if (returnedDate && returnedDate.seconds) {
+          endDate = new Date(returnedDate.seconds * 1000);
+        } else {
+          endDate = new Date(returnedDate);
+        }
+        
+        const diffTime = Math.abs(endDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return `${diffDays} days`;
+      },
+  
+      logout() {
+        const auth = getAuth();
+        auth.signOut().then(() => {
+          this.isLoggedIn = false;
+          this.userName = '';
+          this.userRole = 'user';
+          this.isProfileOpen = false;
+        }).catch((error) => {
+          console.error("Logout error:", error);
+        });
       }
     },
-    
-    async created() {
-      await this.fetchBorrowRequests();
-    },
-
-    methods: {
-      validateForm() {
-        this.errors = {}
-        let isValid = true
+    computed: {
+      filteredCurrentBorrows() {
+        let result = [...this.currentBorrows];
         
-        if (!this.form.firstName.trim()) {
-          this.errors.firstName = 'First name is required'
-          isValid = false
-        }
-        
-        if (!this.form.lastName.trim()) {
-          this.errors.lastName = 'Last name is required'
-          isValid = false
-        }
-        
-        if (!this.form.email.trim()) {
-          this.errors.email = 'Email is required'
-          isValid = false
-        } else if (!/^\S+@\S+\.\S+$/.test(this.form.email)) {
-          this.errors.email = 'Please enter a valid email address'
-          isValid = false
-        }
-        
-        if (!this.form.studentId.trim()) {
-          this.errors.studentId = 'Student ID is required'
-          isValid = false
-        }
-        
-        if (!this.form.department) {
-          this.errors.department = 'Please select your department'
-          isValid = false
-        }
-        
-        if (!this.form.password) {
-          this.errors.password = 'Password is required'
-          isValid = false
-        } else if (this.form.password.length < 8) {
-          this.errors.password = 'Password must be at least 8 characters'
-          isValid = false
-        }
-        
-        if (!this.form.confirmPassword) {
-          this.errors.confirmPassword = 'Please confirm your password'
-          isValid = false
-        } else if (this.form.password !== this.form.confirmPassword) {
-          this.errors.confirmPassword = 'Passwords do not match'
-          isValid = false
-        }
-        
-        if (!this.form.phone.trim()) {
-          this.errors.phone = 'Phone number is required'
-          isValid = false
-        } else if (!/^\d{10}$/.test(this.form.phone.replace(/\D/g, ''))) {
-          this.errors.phone = 'Please enter a valid 10-digit phone number'
-          isValid = false
-        }
-        
-        if (!this.form.terms) {
-          this.errors.terms = 'You must agree to the terms and conditions'
-          isValid = false
-        }
-        
-        return isValid
-      },
-      
-      async register() {
-        if (!this.validateForm()) {
-          return;
-        }
-  
-        this.isSubmitting = true;
-        this.status = null;
-  
-        try {
-          // Create user in Firebase Authentication
-          const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            this.registerForm.email,
-            this.registerForm.password
+        // Apply search filter
+        if (this.searchQuery) {
+          const query = this.searchQuery.toLowerCase();
+          result = result.filter(borrow =>
+            borrow.component?.name.toLowerCase().includes(query) ||
+            borrow.component?.description?.toLowerCase().includes(query)
           );
-  
-          const user = userCredential.user;
-  
-          // Store user details in Firestore
-          await setDoc(doc(db, "users", user.uid), {
-            firstName: this.registerForm.firstName,
-            lastName: this.registerForm.lastName,
-            email: this.registerForm.email,
-            studentId: this.registerForm.studentId,
-            department: this.registerForm.department,
-            phone: this.registerForm.phone,
-            role: "user", // Default role
-            createdAt: new Date(),
-          });
-  
-          this.status = {
-            type: "success",
-            message: "Registration successful! You can now log in.",
-          };
-  
-          // Emit success event and switch to login modal
-          setTimeout(() => {
-            this.showRegisterModal = false;
-            this.showLoginModal = true;
-          }, 1500);
-        } catch (error) {
-          console.error("Error during registration:", error);
-          this.status = {
-            type: "error",
-            message: error.message || "Failed to register. Please try again.",
-          };
-        } finally {
-          this.isSubmitting = false;
         }
+        
+        // Apply sorting
+        if (this.sortBy === 'date-desc') {
+          result.sort((a, b) => this.getTimestamp(b.borrowedDate) - this.getTimestamp(a.borrowedDate));
+        } else if (this.sortBy === 'date-asc') {
+          result.sort((a, b) => this.getTimestamp(a.borrowedDate) - this.getTimestamp(b.borrowedDate));
+        } else if (this.sortBy === 'due-date') {
+          result.sort((a, b) => this.getTimestamp(a.dueDate) - this.getTimestamp(b.dueDate));
+        } else if (this.sortBy === 'name') {
+          result.sort((a, b) => a.component?.name.localeCompare(b.component?.name));
+        }
+        
+        return result;
       },
       
-      resetForm() {
-        this.form = {
-          firstName: '',
-          lastName: '',
-          email: '',
-          studentId: '',
-          department: '',
-          password: '',
-          confirmPassword: '',
-          phone: '',
-          terms: false
+      filteredBorrowHistory() {
+        let result = [...this.borrowHistory];
+        
+        // Apply search filter
+        if (this.searchQuery) {
+          const query = this.searchQuery.toLowerCase();
+          result = result.filter(history =>
+            history.component?.name.toLowerCase().includes(query) ||
+            history.component?.description?.toLowerCase().includes(query)
+          );
         }
-        this.errors = {}
-        this.status = null
+        
+        return result;
       },
-
-      async fetchBorrowRequests() {
-        const snapshot = await getDocs(collection(db, "borrowRequests"));
-        this.borrowRequests = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      
+      dueSoonCount() {
+        return this.currentBorrows.filter(borrow => this.isDueSoon(borrow.dueDate)).length;
       },
-      async addRequest() {
-        await addDoc(collection(db, "borrowRequests"), this.newRequest);
-        this.newRequest = { component: "", quantity: 1 };
-        await this.fetchBorrowRequests();
+      
+      overdueCount() {
+        return this.currentBorrows.filter(borrow => this.isOverdue(borrow.dueDate)).length;
       },
-      async editRequest(request) {
-        this.isEditing = true;
-        this.editingRequestId = request.id;
-        this.newRequest = { ...request };
-      },
-      async updateRequest() {
-        const requestDoc = doc(db, "borrowRequests", this.editingRequestId);
-        await updateDoc(requestDoc, this.newRequest);
-        this.isEditing = false;
-        this.editingRequestId = null;
-        this.newRequest = { component: "", quantity: 1 };
-        await this.fetchBorrowRequests();
-      },
-      async deleteRequest(requestId) {
-        await deleteDoc(doc(db, "borrowRequests", requestId));
-        await this.fetchBorrowRequests();
-      },
-    },
-    
-    watch: {
-      show(newVal) {
-        if (newVal) {
-          this.resetForm()
-        }
+      
+      getTimestamp() {
+        return (date) => {
+          if (!date) return 0;
+          if (date.seconds) return date.seconds * 1000;
+          if (typeof date === 'string') return new Date(date).getTime();
+          return date.getTime();
+        };
       }
     }
-  }
+  };
   </script>
