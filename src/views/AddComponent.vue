@@ -12,6 +12,9 @@
       @logout="logout" 
     />
 
+    <!-- Admin Check Component -->
+    <AdminCheck requiredRole="admin" />
+
     <!-- Page Content -->
     <div class="container mx-auto px-4 py-8">
       <h1 class="text-2xl font-bold text-gray-800 mb-6">Manage Components</h1>
@@ -150,6 +153,7 @@
 <script>
 import NavBar from '../components/NavBar.vue';
 import Footer from '../components/Footer.vue';
+import AdminCheck from '../components/AdminCheck.vue';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../firebase/config";
@@ -158,7 +162,8 @@ export default {
   name: 'AddComponent',
   components: {
     NavBar,
-    Footer
+    Footer,
+    AdminCheck
   },
   data() {
     return {

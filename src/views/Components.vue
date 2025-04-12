@@ -721,7 +721,72 @@ export default {
         console.error('Logout failed:', error);
         alert('Failed to logout. Please try again.');
       }
-    }
+    },
+
+    async register() {
+      try {
+        // Validate form data
+        if (!this.registrationForm.name || !this.registrationForm.email || 
+            !this.registrationForm.phone || !this.registrationForm.password) {
+          alert("Please fill in all required fields.");
+          return;
+        }
+
+        // Import Firebase authentication and Firestore functions
+        const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+        const { collection, doc, setDoc } = await import('firebase/firestore');
+        const auth = getAuth();
+        
+        // Create the Firebase Auth user
+        const userCredential = await createUserWithEmailAndPassword(
+          auth, 
+          this.registrationForm.email, 
+          this.registrationForm.password
+        );
+        
+        const user = userCredential.user;
+        
+        // Update the user profile with display name
+        await updateProfile(user, {
+          displayName: this.registrationForm.name
+        });
+        
+        // Determine role based on email
+        let userRole = 'user';
+        if (this.registrationForm.email.includes('admin')) {
+          userRole = 'admin';
+        } else if (this.registrationForm.email.includes('manager')) {
+          userRole = 'manager';
+        }
+        
+        // Store user data in Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          name: this.registrationForm.name,
+          email: this.registrationForm.email,
+          phone: this.registrationForm.phone,
+          role: userRole,
+          status: 'active',
+          joinedDate: new Date(),
+          lastActive: new Date()
+        });
+        
+        // Update local state
+        this.isLoggedIn = true;
+        this.userName = this.registrationForm.name;
+        this.userRole = userRole;
+        
+        this.showRegistrationModal = false;
+        alert("Registration successful!");
+        
+      } catch (error) {
+        console.error("Registration error:", error);
+        if (error.code === 'auth/email-already-in-use') {
+          alert("This email is already in use. Please try a different email or login.");
+        } else {
+          alert(`Registration failed: ${error.message || "Unknown error"}`);
+        }
+      }
+    },
   }
 }
 </script>

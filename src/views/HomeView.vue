@@ -174,7 +174,7 @@
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-800">Login</h3>
             <button @click="showLoginModal = false" class="text-gray-500 hover:text-gray-700">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -372,24 +372,99 @@ export default {
         alert(`Login failed: ${error.message || "Unknown error"}`);
       }
     },
-    register() {
-      if (this.registrationForm.name && this.registrationForm.email && this.registrationForm.phone && this.registrationForm.password) {
+    async register() {
+      try {
+        // Validate form data
+        if (!this.registrationForm.name || !this.registrationForm.email || 
+            !this.registrationForm.phone || !this.registrationForm.password) {
+          alert("Please fill in all required fields.");
+          return;
+        }
+  
+        // Import Firebase authentication and Firestore
+        const { getAuth, createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+        const { collection, doc, setDoc } = await import('firebase/firestore');
+        
+        const auth = getAuth();
+        
+        // Show loading or disable button here if needed
+        
+        // Step 1: Create the Firebase Auth user
+        const userCredential = await createUserWithEmailAndPassword(
+          auth, 
+          this.registrationForm.email, 
+          this.registrationForm.password
+        );
+        
+        // Step 2: Get the user object
+        const user = userCredential.user;
+        
+        // Step 3: Update the user profile with display name
+        await updateProfile(user, {
+          displayName: this.registrationForm.name
+        });
+        
+        // Step 4: Determine user role based on email (you may want to change this logic)
+        let userRole = 'user';
+        if (this.registrationForm.email.includes('admin')) {
+          userRole = 'admin';
+        } else if (this.registrationForm.email.includes('manager')) {
+          userRole = 'manager';
+        }
+        
+        // Step 5: Store additional user data in Firestore
+        console.log("Adding user to Firestore with UID:", user.uid);
+        
+        try {
+          await setDoc(doc(db, "users", user.uid), {
+            name: this.registrationForm.name,
+            email: this.registrationForm.email,
+            phone: this.registrationForm.phone,
+            role: userRole,
+            status: 'active',
+            joinedDate: new Date(),
+            lastActive: new Date(),
+            department: '',
+            permissions: [],
+            notes: '',
+            priority: false
+          });
+          
+          console.log("User successfully added to Firestore 'users' collection");
+        } catch (firestoreError) {
+          console.error("Error adding user to Firestore:", firestoreError);
+          // Even if Firestore fails, the Auth user was created, so we should notify the user
+          alert("Account created but profile data couldn't be saved. Some features may be limited.");
+        }
+        
+        // Step 6: Update local state variables
         this.isLoggedIn = true;
         this.userName = this.registrationForm.name;
-
-        // Simulate different user roles based on email
-        if (this.registrationForm.email.includes('admin')) {
-          this.userRole = 'admin';
-        } else if (this.registrationForm.email.includes('manager')) {
-          this.userRole = 'manager';
-        } else {
-          this.userRole = 'user';
-        }
-
+        this.userRole = userRole;
+        
+        // Step 7: Close the modal and notify the user
         this.showRegistrationModal = false;
         alert("Registration successful!");
-      } else {
-        alert("Please fill in all required fields.");
+        
+        // Optional: Reset the form
+        this.registrationForm = {
+          name: '',
+          email: '',
+          phone: '',
+          password: ''
+        };
+        
+      } catch (error) {
+        console.error("Registration error:", error);
+        
+        // Display user-friendly error messages
+        if (error.code === 'auth/email-already-in-use') {
+          alert("This email is already in use. Please try a different email or login.");
+        } else if (error.code === 'auth/weak-password') {
+          alert("Password is too weak. Please use a stronger password.");
+        } else {
+          alert(`Registration failed: ${error.message || "Unknown error"}`);
+        }
       }
     },
     logout() {

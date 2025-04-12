@@ -5,6 +5,9 @@
             :isMobileMenuOpen="isMobileMenuOpen" :isProfileOpen="isProfileOpen"
             @show-login-modal="showLoginModal = true" @logout="logout" />
 
+        <!-- Admin Check Component -->
+        <AdminCheck requiredRole="admin" />
+
         <!-- Admin Panel Content -->
         <section class="py-12 bg-white">
             <div class="container mx-auto px-4">
@@ -75,37 +78,109 @@
 
         <!-- Footer -->
         <Footer />
+        
+        <!-- Unauthorized Access Modal -->
+        <div v-if="showUnauthorizedModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Unauthorized Access</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <p class="text-center text-gray-700 mb-4">You do not have permission to access the Admin Panel. This area is restricted to administrators only.</p>
+                    <div class="flex justify-center">
+                        <button @click="goToHomePage" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Go Back to Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Not Logged In Modal -->
+        <div v-if="showNotLoggedInModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Authentication Required</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <p class="text-center text-gray-700 mb-4">You need to be logged in to access the Admin Panel. Please log in to continue.</p>
+                    <div class="flex justify-center gap-4">
+                        <button @click="goToHomePage" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Go Back to Home
+                        </button>
+                        <button @click="showLoginForm" class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            Log In
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Login Modal Component -->
+        <LoginModal 
+            :show="showLoginModal" 
+            @close="showLoginModal = false" 
+            @login-success="handleLoginSuccess" 
+            @show-registration="goToRegistration"
+        />
     </div>
 </template> 
 
 <script>
 import NavBar from '../components/NavBar.vue'
 import Footer from '../components/Footer.vue'
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
+import AdminCheck from '../components/AdminCheck.vue'
+import LoginModal from '../components/LoginModal.vue'
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { db } from "../firebase/config";
 
 export default {
     name: 'AdminPanel',
     components: {
         NavBar,
-        Footer
+        Footer,
+        AdminCheck,
+        LoginModal
     },
     data() {
         return {
-            isLoggedIn: true,
-            userName: 'Admin User',
-            userRole: 'admin',
+            isLoggedIn: false,
+            userName: '',
+            userRole: '',
             isMobileMenuOpen: false,
             isProfileOpen: false,
             showLoginModal: false,
+            showNotLoggedInModal: false,
             adminData: [],
             newAdmin: { name: "", role: "admin" },
             isEditing: false,
             editingAdminId: null,
+            currentUserId: null,
+            showUnauthorizedModal: false,
         }
     },
     async created() {
-        await this.fetchAdminData();
+        await this.getCurrentUserId();
+        if (this.currentUserId) {
+            await this.fetchCurrentUser();
+            await this.fetchAdminData();
+            this.checkUserPermissions();
+        } else {
+            console.log("No user is logged in!");
+            // Show not logged in modal
+            this.showNotLoggedInModal = true;
+        }
     },
     computed: {
         userInitials() {
@@ -114,6 +189,105 @@ export default {
         }
     },
     methods: {
+        async getCurrentUserId() {
+            const auth = getAuth();
+            
+            // Return a Promise to allow awaiting the auth state
+            return new Promise((resolve) => {
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        // User is signed in
+                        this.currentUserId = user.uid;
+                        console.log("Current user ID:", user.uid);
+                        this.isLoggedIn = true;
+                        resolve(user.uid);
+                    } else {
+                        // User is signed out
+                        this.currentUserId = null;
+                        this.isLoggedIn = false;
+                        resolve(null);
+                    }
+                });
+            });
+        },
+        
+        async fetchCurrentUser() {
+            try {
+                if (!this.currentUserId) {
+                    console.log("No user ID available!");
+                    this.isLoggedIn = false;
+                    return null;
+                }
+                
+                const userDoc = await getDoc(doc(db, "users", this.currentUserId));
+                
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    this.isLoggedIn = true;
+                    this.userName = userData.name || 'Anonymous User';
+                    this.userRole = userData.role || 'user';
+                    
+                    // Log the user role to console
+                    console.log("Current user role:", this.userRole);
+                    
+                    return userData;
+                } else {
+                    console.log("No user document found!");
+                    this.isLoggedIn = false;
+                    return null;
+                }
+            } catch (error) {
+                console.error("Error fetching current user:", error);
+                this.isLoggedIn = false;
+                return null;
+            }
+        },
+        
+        checkUserPermissions() {
+            console.log("Checking permissions for role:", this.userRole);
+            
+            // Check if user has admin access
+            if (this.userRole === 'admin') {
+                console.log("User has full admin permissions");
+            } else if (this.userRole === 'manager') {
+                console.log("User has manager permissions - limited admin access");
+                // Show unauthorized modal for managers too - uncomment if you want only admins
+                // this.showUnauthorizedModal = true;
+            } else {
+                console.log("User does not have admin permissions");
+                // Show unauthorized access modal
+                this.showUnauthorizedModal = true;
+            }
+        },
+        
+        goToHomePage() {
+            // Navigate to home page
+            this.$router.push('/');
+        },
+        
+        showLoginForm() {
+            // Hide the notification modal and show the login modal
+            this.showNotLoggedInModal = false;
+            this.showLoginModal = true;
+        },
+        
+        handleLoginSuccess(user) {
+            console.log("Login successful, updating UI", user);
+            this.currentUserId = user.uid;
+            this.isLoggedIn = true;
+            // Fetch user data to get role and other info
+            this.fetchCurrentUser().then(() => {
+                // After fetching user data, check permissions and fetch admin data
+                this.checkUserPermissions();
+                this.fetchAdminData();
+            });
+        },
+        
+        goToRegistration() {
+            // For now, redirect to home page for registration
+            this.$router.push({ path: '/', query: { showRegistration: 'true' } });
+        },
+        
         logout() {
             this.isLoggedIn = false
             this.userRole = 'user'
