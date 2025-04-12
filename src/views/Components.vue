@@ -150,8 +150,137 @@
           </div>
         </div>
       </div>
+      
+      <!-- Pagination - Moved inside the container -->
+      <div class="mt-8 flex items-center justify-between">
+        <div class="text-sm text-gray-700">
+          Showing <span class="font-medium">1</span> to <span class="font-medium">{{ Math.min(filteredComponents.length, 20)
+          }}</span> of <span class="font-medium">{{ filteredComponents.length }}</span> components
+        </div>
+        <div class="flex space-x-2">
+          <button class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50" disabled>
+            Previous
+          </button>
+          <button class="px-3 py-1 border rounded-md text-sm bg-emerald-50 text-emerald-600 font-medium">
+            1
+          </button>
+          <button v-if="filteredComponents.length > 20"
+            class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50">
+            2
+          </button>
+          <button v-if="filteredComponents.length > 40"
+            class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50">
+            3
+          </button>
+          <button v-if="filteredComponents.length > 20"
+            class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50">
+            Next
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
+
+    <!-- User Borrow Requests Table -->
+    <div class="container mx-auto px-4 py-8 border-t border-gray-200">
+      <h2 class="text-2xl font-bold text-gray-800 mb-6">Your Borrow Requests</h2>
+      
+      <div v-if="loadingRequests" class="text-center py-8">
+        <svg class="animate-spin h-10 w-10 text-emerald-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="text-gray-600">Loading your requests...</p>
+      </div>
+      
+      <div v-else-if="!isLoggedIn" class="bg-blue-50 p-6 rounded-lg text-center">
+        <p class="text-blue-700 mb-4">Please log in to view your borrow requests.</p>
+        <button 
+          @click="showLoginModal = true" 
+          class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition"
+        >
+          Log In
+        </button>
+      </div>
+      
+      <div v-else-if="userRequests.length === 0" class="bg-gray-50 p-6 rounded-lg text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h3 class="text-lg font-medium text-gray-700 mb-2">No requests found</h3>
+        <p class="text-gray-500">You haven't made any borrow requests yet.</p>
+      </div>
+      
+      <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Component</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Date</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="request in userRequests" :key="request.id" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
+                    <img 
+                      :src="request.component?.image || 'https://via.placeholder.com/100'" 
+                      :alt="request.componentName" 
+                      class="max-h-full max-w-full object-contain" 
+                    />
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900">{{ request.componentName }}</div>
+                    <div class="text-xs text-gray-500">{{ request.reason?.substring(0, 30) }}{{ request.reason?.length > 30 ? '...' : '' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">{{ request.quantity }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm text-gray-900">{{ formatDate(request.requestDate) }}</div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span :class="getStatusBadgeClass(request.status)">
+                  {{ request.status }}
+                </span>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div v-if="request.dueDate" class="text-sm text-gray-900">
+                  {{ formatDate(request.dueDate) }}
+                </div>
+                <div v-else class="text-sm text-gray-500">
+                  Not set
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <button 
+                  v-if="request.status === 'Pending'"
+                  @click="cancelRequest(request)" 
+                  class="text-red-600 hover:text-red-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  v-if="request.status === 'Approved' && !request.returned"
+                  @click="markAsReturned(request)" 
+                  class="text-emerald-600 hover:text-emerald-900"
+                >
+                  Return
+                </button>
+                <span v-if="request.status === 'Rejected'" class="text-gray-500">No actions</span>
+                <span v-if="request.returned" class="text-gray-500">Returned</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
   <!-- Borrow Modal -->
   <div v-if="showBorrowModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
@@ -250,35 +379,6 @@
     </form>
   </div> -->
 
-  <!-- Pagination -->
-  <div class="mt-8 flex items-center justify-between">
-    <div class="text-sm text-gray-700">
-      Showing <span class="font-medium">1</span> to <span class="font-medium">{{ Math.min(filteredComponents.length, 20)
-      }}</span> of <span class="font-medium">{{ filteredComponents.length }}</span> components
-    </div>
-    <div class="flex space-x-2">
-      <button class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50" disabled>
-        Previous
-      </button>
-      <button class="px-3 py-1 border rounded-md text-sm bg-emerald-50 text-emerald-600 font-medium">
-        1
-      </button>
-      <button v-if="filteredComponents.length > 20"
-        class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50">
-        2
-      </button>
-      <button v-if="filteredComponents.length > 40"
-        class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50">
-        3
-      </button>
-      <button v-if="filteredComponents.length > 20"
-        class="px-3 py-1 border rounded-md text-sm text-gray-600 hover:bg-gray-50">
-        Next
-      </button>
-    </div>
-  </div>
- 
-
   <!-- Login Modal (reused from HomePage) -->
   <div v-if="showLoginModal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
@@ -362,7 +462,7 @@
 
   <!-- Footer (simplified from HomePage) -->
   <Footer />
-  
+</div>
 </template>
 
 <script>
@@ -435,7 +535,11 @@ export default {
         componentName: '',
         quantity: 1,
         reason: ''
-      }
+      },
+
+      // User Requests
+      userRequests: [],
+      loadingRequests: false,
     }
   },
 
@@ -453,6 +557,25 @@ export default {
       }
     });
     await this.fetchComponents();
+
+    // When auth state changes, fetch user requests
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in
+        this.isLoggedIn = true;
+        this.userName = user.displayName || user.email.split('@')[0];
+        this.userRole = user.email.includes('admin') ? 'admin' : user.email.includes('manager') ? 'manager' : 'user';
+        
+        // Fetch user's borrow requests when logged in
+        await this.fetchUserRequests(user.uid);
+      } else {
+        // User is signed out
+        this.isLoggedIn = false;
+        this.userName = '';
+        this.userRole = 'user';
+        this.userRequests = [];
+      }
+    });
   },
 
   computed: {
@@ -659,23 +782,39 @@ export default {
           return;
         }
 
+        // Create a request object that matches the structure expected by the ManageRequest page
         const borrowRequest = {
           userName: this.userName,
-          userId: user.uid, // Use the logged-in user's ID
+          userId: user.uid,
+          userEmail: user.email,
           componentName: this.borrowRequestForm.componentName,
-          componentId: this.selectedComponent.id, // Include component ID
-          quantity: this.borrowRequestForm.quantity,
+          componentId: this.selectedComponent.id,
+          component: {
+            id: this.selectedComponent.id,
+            name: this.selectedComponent.name,
+            image: this.selectedComponent.image || 'https://via.placeholder.com/100'
+          },
+          user: {
+            id: user.uid,
+            name: this.userName,
+            email: user.email
+          },
+          quantity: parseInt(this.borrowRequestForm.quantity),
           reason: this.borrowRequestForm.reason,
           requestDate: new Date(),
-          status: 'Pending', // Ensure status is set to Pending
-          type: 'borrow', // Ensure type is set to borrow
+          status: 'Pending', // Set to Pending so it shows up in the ManageRequest page
+          type: 'borrow',
           dueDate: null, // Due date will be set upon approval
-          returned: false // Track if the component is returned
+          returned: false
         };
 
-        await addDoc(collection(db, 'borrows'), borrowRequest);
+        // Add to the borrowRequests collection that ManageRequest page reads from
+        await addDoc(collection(db, 'borrowRequests'), borrowRequest);
 
-        alert('Borrow request submitted successfully!');
+        // Refresh user requests immediately to show the new request
+        await this.fetchUserRequests(user.uid);
+
+        alert('Borrow request submitted successfully! Your request is pending approval.');
         this.borrowRequestForm = { componentName: '', quantity: 1, reason: '' }; // Reset form
         this.showBorrowModal = false; // Close the borrow request form
       } catch (error) {
@@ -777,6 +916,116 @@ export default {
           alert(`Registration failed: ${error.message || "Unknown error"}`);
         }
       }
+    },
+
+    async fetchUserRequests(userId) {
+      if (!userId) return;
+      
+      try {
+        this.loadingRequests = true;
+        
+        // Query Firestore for requests made by this user
+        const q = collection(db, 'borrowRequests');
+        const querySnapshot = await getDocs(q);
+        
+        // Filter requests where userId matches current user
+        this.userRequests = querySnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            // Ensure dates are properly handled
+            requestDate: doc.data().requestDate?.toDate ? doc.data().requestDate.toDate() : new Date(doc.data().requestDate),
+            dueDate: doc.data().dueDate?.toDate ? doc.data().dueDate.toDate() : doc.data().dueDate ? new Date(doc.data().dueDate) : null,
+          }))
+          .filter(request => request.userId === userId)
+          .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
+          
+        console.log(`Fetched ${this.userRequests.length} user requests`);
+      } catch (error) {
+        console.error('Error fetching user requests:', error);
+      } finally {
+        this.loadingRequests = false;
+      }
+    },
+    
+    async cancelRequest(request) {
+      if (!confirm('Are you sure you want to cancel this request?')) return;
+      
+      try {
+        // Update the request status in Firestore
+        const requestRef = doc(db, 'borrowRequests', request.id);
+        await updateDoc(requestRef, {
+          status: 'Cancelled by you',
+          cancelledDate: new Date()
+        });
+        
+        // Update the local state
+        const index = this.userRequests.findIndex(r => r.id === request.id);
+        if (index !== -1) {
+          this.userRequests[index].status = 'Cancelled by you';
+          this.userRequests[index].cancelledDate = new Date();
+        }
+        
+        alert('Request cancelled successfully');
+      } catch (error) {
+        console.error('Error cancelling request:', error);
+        alert('Failed to cancel request. Please try again.');
+      }
+    },
+    
+    async markAsReturned(request) {
+      if (!confirm('Are you marking this component as returned?')) return;
+      
+      try {
+        // Update the request in Firestore
+        const requestRef = doc(db, 'borrowRequests', request.id);
+        await updateDoc(requestRef, {
+          returned: true,
+          returnDate: new Date()
+        });
+        
+        // Update the local state
+        const index = this.userRequests.findIndex(r => r.id === request.id);
+        if (index !== -1) {
+          this.userRequests[index].returned = true;
+          this.userRequests[index].returnDate = new Date();
+        }
+        
+        alert('Component marked as returned');
+      } catch (error) {
+        console.error('Error marking as returned:', error);
+        alert('Failed to mark as returned. Please try again.');
+      }
+    },
+    
+    getStatusBadgeClass(status) {
+      switch (status) {
+        case 'Pending':
+          return 'px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800';
+        case 'Approved':
+          return 'px-2 py-1 text-xs rounded-full bg-green-100 text-green-800';
+        case 'Rejected':
+          return 'px-2 py-1 text-xs rounded-full bg-red-100 text-red-800';
+        case 'Cancelled by you':
+          return 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600';
+        case 'Cancelled':
+          return 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800';
+        default:
+          return 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800';
+      }
+    },
+    
+    formatDate(date) {
+      if (!date) return '';
+      
+      // Handle Firestore Timestamp
+      if (date.toDate) {
+        date = date.toDate();
+      }
+      
+      // Format the date
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(date).toLocaleDateString('en-US', options);
     },
   }
 }

@@ -665,7 +665,6 @@
         <span>{{ notification.message }}</span>
       </div>
     </div>
-
     <!-- Footer -->
     <Footer />
   </div>
