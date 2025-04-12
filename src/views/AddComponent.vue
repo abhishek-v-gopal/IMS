@@ -17,8 +17,18 @@
 
     <!-- Page Content -->
     <div class="container mx-auto px-4 py-8">
-      <h1 class="text-2xl font-bold text-gray-800 mb-6">Manage Components</h1>
-
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Manage Components</h1>
+        <button 
+          @click="goBack" 
+          class="flex items-center px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+      </div>
       <!-- Add/Edit Component Form -->
       <form @submit.prevent="isEditing ? updateComponent() : addComponent()" class="bg-white p-6 rounded-lg shadow-md space-y-4">
         <h2 class="text-lg font-medium text-gray-800">{{ isEditing ? 'Edit Component' : 'Add New Component' }}</h2>
@@ -191,6 +201,9 @@ export default {
     await this.fetchComponents();
   },
   methods: {
+    goBack() {
+    this.$router.go(-1);
+  },
     async fetchComponents() {
       const snapshot = await getDocs(collection(db, "components"));
       this.components = snapshot.docs.map((doc) => ({

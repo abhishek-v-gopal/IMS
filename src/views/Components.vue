@@ -10,15 +10,6 @@
       <div class="container mx-auto px-4 py-8">
         <h1 class="text-2xl font-bold text-gray-800 mb-6">All Components</h1>
 
-        <!-- Add Logout Button -->
-        <div v-if="isLoggedIn" class="text-right mb-4">
-          <button 
-            @click="logout" 
-            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-          >
-            Logout
-          </button>
-        </div>
 
         <!-- Search and Filters -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
