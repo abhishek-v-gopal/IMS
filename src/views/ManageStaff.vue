@@ -302,7 +302,7 @@
               <div class="bg-gray-50 p-4 rounded-md space-y-3">
                 <div>
                   <div class="text-xs text-gray-500">Email</div>
-                  <div class="text-sm font-medium">{{ selectedStaff.email }}</div>
+                  <div class="text-sm font-medium">{{ selectedStaff.email || 'No email provided' }}</div>
                 </div>
                 <div>
                   <div class="text-xs text-gray-500">Phone</div>
@@ -310,7 +310,7 @@
                 </div>
                 <div>
                   <div class="text-xs text-gray-500">Department</div>
-                  <div class="text-sm">{{ selectedStaff.department }}</div>
+                  <div class="text-sm">{{ selectedStaff.department || 'Not assigned' }}</div>
                 </div>
               </div>
             </div>
@@ -321,6 +321,10 @@
                 <div>
                   <div class="text-xs text-gray-500">Staff ID</div>
                   <div class="text-sm font-medium">{{ selectedStaff.id }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-gray-500">Role</div>
+                  <div class="text-sm font-medium">{{ selectedStaff.role || 'User' }}</div>
                 </div>
                 <div>
                   <div class="text-xs text-gray-500">Joined Date</div>

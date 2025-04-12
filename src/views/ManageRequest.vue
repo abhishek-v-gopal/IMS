@@ -723,11 +723,11 @@
             ...data,
             component: {
               name: data.componentName || 'Unknown Component',
-              image: 'https://via.placeholder.com/100' // Default image since componentImage doesn't exist
+              image: data.component?.image || 'https://via.placeholder.com/100' 
             },
             user: {
               name: data.userName || 'Unknown User',
-              email: data.userId || 'No email provided' // Use userId as email since userEmail doesn't exist
+              email: data.userEmail || data.user?.email || 'No email provided' // Use userEmail instead of userId
             }
           };
         });
