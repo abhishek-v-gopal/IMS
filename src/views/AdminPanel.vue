@@ -47,7 +47,7 @@
                 </div>
 
                 <!-- Admin Data Table -->
-                <div class="mt-12 bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- <div class="mt-12 bg-white rounded-lg shadow-sm overflow-hidden">
                     <h3 class="text-xl font-bold text-gray-800 px-6 py-4 border-b">Admin Data</h3>
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -72,7 +72,7 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
+                </div> -->
             </div>
         </section>
 

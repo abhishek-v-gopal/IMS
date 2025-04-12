@@ -20,10 +20,18 @@
     <!-- Page Content -->
     <div class="container mx-auto px-4 py-8">
       <!-- Page Header -->
-      <div class="mb-6">
+      <div class="mb-6 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800">Manage Staff</h1>
-        <p class="text-gray-600">Add, edit, and manage staff members and their roles</p>
+        <button @click="goBack"
+          class="flex items-center px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
       </div>
+      <p class="text-gray-600 mb-6">Add, edit, and manage staff members and their roles</p>
 
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -773,7 +781,10 @@ export default {
         this.loading = false;
       }
     },
-    
+    goBack() {
+    // Go back to previous page in browser history
+    this.$router.go(-1);
+  },
     formatDate(date) {
       if (!date) return '';
       const options = { year: 'numeric', month: 'short', day: 'numeric' };
