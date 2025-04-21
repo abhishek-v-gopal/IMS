@@ -146,8 +146,8 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button @click="editComponent(component)" class="text-blue-600 hover:text-blue-900 mr-4">Edit</button>
-                <button @click="deleteComponent(component.id)" class="text-red-600 hover:text-red-900">Delete</button>
-                <button @click="borrowComponent(component.id)" class="text-green-600 hover:text-green-900 ml-4">Borrow</button>
+                <button @click="deleteComponent(component.id)" class="t ext-red-600 hover:text-red-900">Delete</button>
+                <!-- <button @click="borrowComponent(component.id)" class="text-green-600 hover:text-green-900 ml-4">Borrow</button> -->
               </td>
             </tr>
           </tbody>
