@@ -8,6 +8,7 @@
       <nav class="hidden md:flex space-x-6">
         <a href="/" class="text-gray-700 hover:text-emerald-600 transition">Home</a>
         <a href="/components" class="text-gray-700 hover:text-emerald-600 transition">Components</a>
+        <a href="/products" class="text-gray-700 hover:text-emerald-600 transition">products</a>
         <a href="/borrow" class="text-gray-700 hover:text-emerald-600 transition">My Borrows</a>
         <a href="/about" class="text-gray-700 hover:text-emerald-600 transition">About</a>
       </nav>

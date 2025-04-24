@@ -12,7 +12,7 @@
         <section class="py-12 bg-white">
             <div class="container mx-auto px-4">
                 <h2 class="text-3xl font-bold text-gray-800 mb-8">Admin Panel</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                     <div class="bg-emerald-50 p-6 rounded-lg border border-emerald-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-600 mb-4" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
@@ -22,6 +22,16 @@
                         <h3 class="text-lg font-medium text-gray-800 mb-2">Add New Component</h3>
                         <p class="text-gray-600 mb-4">Add a new component to the inventory system.</p>
                         <a href="/addcomponent" class="text-emerald-600 font-medium hover:text-emerald-700">Add Component →</a>
+                    </div>
+                    <div class="bg-red-100 p-6 rounded-lg border border-emerald-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-600 mb-4" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <h3 class="text-lg font-medium text-gray-800 mb-2">Sales</h3>
+                        <p class="text-gray-600 mb-4">Add new items and manage orders.</p>
+                        <a href="/admin/products" class="text-emerald-600 font-medium hover:text-emerald-700">Add products →</a>
                     </div>
                     <div class="bg-blue-50 p-6 rounded-lg border border-blue-100">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600 mb-4" fill="none"
@@ -39,7 +49,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <h3 class="text-lg font-medium text-gray-800 mb-2">Manage staff</h3>
+                        <h3 class="text-lg font-medium text-gray-800 mb-2">Manage users</h3>
                         <p class="text-gray-600 mb-4">Oversee and control managerial roles efficiently.</p>
                         <a href="/managestaff" class="text-purple-600 font-medium hover:text-purple-700">Manage Now →</a>
                     </div>

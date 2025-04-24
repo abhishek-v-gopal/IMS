@@ -7,6 +7,11 @@ import AdminPanel from '../views/AdminPanel.vue';
 import AddComponent from '../views/AddComponent.vue';
 import ManageRequest from '../views/ManageRequest.vue';
 import ManageStaff from '../views/ManageStaff.vue';
+import SaleComponent from '../views/SaleComponent.vue';
+import product from '../views/ProductView.vue';
+import OrderHistoryView from '../views/OrderHistoryView.vue';
+import AdminOrdersView from '../views/AdminOrdersView.vue';
+
 import { auth, db } from "../firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -20,6 +25,10 @@ const routes = [
   { path: '/addcomponent', component: AddComponent },
   { path: '/managerequest', component: ManageRequest },
   { path: '/managestaff', component: ManageStaff },
+  { path: '/admin/products', component: SaleComponent },
+  { path: '/products', component: product },
+  { path: '/orderhistory', component: OrderHistoryView },
+  { path: '/admin/orders', component: AdminOrdersView },
 ];
 
 const router = createRouter({

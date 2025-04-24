@@ -45,6 +45,12 @@
               Currently Borrowed
             </button>
             <button 
+              @click="activeTab = 'requests'" 
+              :class="`py-4 px-6 font-medium text-sm border-b-2 ${activeTab === 'requests' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`"
+            >
+              My Requests
+            </button>
+            <button 
               @click="activeTab = 'history'" 
               :class="`py-4 px-6 font-medium text-sm border-b-2 ${activeTab === 'history' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`"
             >
@@ -167,6 +173,98 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <!-- Borrow Requests Tab -->
+        <div v-if="activeTab === 'requests'">
+          <h2 class="text-xl font-bold text-gray-800 mb-6">Your Borrow Requests</h2>
+          
+          <div v-if="loadingRequests" class="text-center py-8">
+            <svg class="animate-spin h-10 w-10 text-emerald-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-gray-600">Loading your requests...</p>
+          </div>
+          
+          <div v-else-if="userRequests.length === 0" class="bg-gray-50 p-6 rounded-lg text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 class="text-lg font-medium text-gray-700 mb-2">No requests found</h3>
+            <p class="text-gray-500">You haven't made any borrow requests yet.</p>
+          </div>
+          
+          <div v-else class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Component</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Date</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                  <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="request in userRequests" :key="request.id" class="hover:bg-gray-50">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <div class="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-md flex items-center justify-center overflow-hidden">
+                        <img 
+                          :src="request.component?.image || 'https://via.placeholder.com/100'" 
+                          :alt="request.componentName" 
+                          class="max-h-full max-w-full object-contain" 
+                        />
+                      </div>
+                      <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">{{ request.componentName }}</div>
+                        <div class="text-xs text-gray-500">{{ request.reason?.substring(0, 30) }}{{ request.reason?.length > 30 ? '...' : '' }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{{ request.quantity }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">{{ formatDate(request.requestDate) }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span :class="getStatusBadgeClass(request.status)">
+                      {{ request.status }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div v-if="request.dueDate" class="text-sm text-gray-900">
+                      {{ formatDate(request.dueDate) }}
+                    </div>
+                    <div v-else class="text-sm text-gray-500">
+                      Not set
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button 
+                      v-if="request.status === 'Pending'"
+                      @click="cancelRequest(request)" 
+                      class="text-red-600 hover:text-red-900"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      v-if="request.status === 'Approved' && !request.returned"
+                      @click="markAsReturned(request)" 
+                      class="text-emerald-600 hover:text-emerald-900"
+                    >
+                      Return
+                    </button>
+                    <span v-if="request.status === 'Rejected'" class="text-gray-500">No actions</span>
+                    <span v-if="request.returned" class="text-gray-500">Returned</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
         
@@ -517,12 +615,14 @@
         isProfileOpen: false,
         showLoginModal: false,
         showRegisterModal: false,
-        activeTab: 'current', // 'current' or 'history'
+        activeTab: 'current', // 'current', 'requests', or 'history'
         searchQuery: '',
         sortBy: 'date-desc',
         currentBorrows: [],
         pendingRequests: [],
         borrowHistory: [],
+        userRequests: [], // Added for borrow requests
+        loadingRequests: false, // Added for borrow requests loading state
         loading: {
           current: false,
           history: false
@@ -572,6 +672,7 @@
         try {
           this.loading.current = true;
           this.loading.history = true;
+          this.loadingRequests = true;
           
           // Log the user ID for which we're fetching data
           console.log("Fetching borrow data for user ID:", userId);
@@ -611,12 +712,29 @@
           console.log("Current borrows:", this.currentBorrows);
           console.log("Pending requests:", this.pendingRequests);
           console.log("Borrow history:", this.borrowHistory);
+
+          // Fetch user's borrow requests
+          const requestsQuery = query(collection(db, 'borrowRequests'), where("userId", "==", userId));
+          const requestsSnapshot = await getDocs(requestsQuery);
+          
+          this.userRequests = requestsSnapshot.docs
+            .map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              // Ensure dates are properly handled
+              requestDate: doc.data().requestDate?.toDate ? doc.data().requestDate.toDate() : new Date(doc.data().requestDate),
+              dueDate: doc.data().dueDate?.toDate ? doc.data().dueDate.toDate() : doc.data().dueDate ? new Date(doc.data().dueDate) : null,
+            }))
+            .sort((a, b) => new Date(b.requestDate) - new Date(a.requestDate));
+            
+          console.log(`Fetched ${this.userRequests.length} user requests`);
         } catch (error) {
           console.error('Error fetching borrow data:', error);
           this.error = error.message;
         } finally {
           this.loading.current = false;
           this.loading.history = false;
+          this.loadingRequests = false;
         }
       },
       
@@ -645,6 +763,56 @@
         }
       },
   
+      async cancelRequest(request) {
+        if (!confirm('Are you sure you want to cancel this request?')) return;
+        
+        try {
+          // Update the request status in Firestore
+          const requestRef = doc(db, 'borrowRequests', request.id);
+          await updateDoc(requestRef, {
+            status: 'Cancelled by user',
+            cancelledDate: new Date()
+          });
+          
+          // Update the local state
+          const index = this.userRequests.findIndex(r => r.id === request.id);
+          if (index !== -1) {
+            this.userRequests[index].status = 'Cancelled by user';
+            this.userRequests[index].cancelledDate = new Date();
+          }
+          
+          alert('Request cancelled successfully');
+        } catch (error) {
+          console.error('Error cancelling request:', error);
+          alert('Failed to cancel request. Please try again.');
+        }
+      },
+      
+      async markAsReturned(request) {
+        if (!confirm('Are you marking this component as returned?')) return;
+        
+        try {
+          // Update the request in Firestore
+          const requestRef = doc(db, 'borrowRequests', request.id);
+          await updateDoc(requestRef, {
+            returned: true,
+            returnDate: new Date()
+          });
+          
+          // Update the local state
+          const index = this.userRequests.findIndex(r => r.id === request.id);
+          if (index !== -1) {
+            this.userRequests[index].returned = true;
+            this.userRequests[index].returnDate = new Date();
+          }
+          
+          alert('Component marked as returned');
+        } catch (error) {
+          console.error('Error marking as returned:', error);
+          alert('Failed to mark as returned. Please try again.');
+        }
+      },
+
       formatDate(date) {
         if (!date) return 'N/A';
         
@@ -705,6 +873,23 @@
         }
       },
   
+      getStatusBadgeClass(status) {
+        switch (status) {
+          case 'Pending':
+            return 'px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-800';
+          case 'Approved':
+            return 'px-2 py-1 text-xs rounded-full bg-green-100 text-green-800';
+          case 'Rejected':
+            return 'px-2 py-1 text-xs rounded-full bg-red-100 text-red-800';
+          case 'Cancelled by user':
+            return 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600';
+          case 'Cancelled':
+            return 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800';
+          default:
+            return 'px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800';
+        }
+      },
+
       calculateDuration(borrowedDate, returnedDate) {
         if (!borrowedDate || !returnedDate) return 'N/A';
         

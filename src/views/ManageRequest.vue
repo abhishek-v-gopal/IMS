@@ -790,7 +790,7 @@ export default {
     overdueRequestsList() {
       const today = new Date();
       const overdue = this.requests.filter(request => {
-        if (request.status !== 'Approved' || !request.dueDate) return false;
+        if (request.status !== 'Approved' || !request.dueDate || request.returned) return false;
 
         // Convert Firestore timestamp to Date
         let dueDate;
@@ -815,159 +815,119 @@ export default {
       return sorted;
     },
     filteredRequests() {
-      // For the pending tab, we need to make sure only pending requests are shown
+      // First determine which requests to show based on active tab
+      let result;
+      
       if (this.activeTab === 'pending') {
-        let result = this.requests.filter(request => request.status === 'Pending');
-
-        // Then apply additional filters from search, type, and date
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase();
-          result = result.filter(request =>
-            request.componentName?.toLowerCase().includes(query) ||
-            request.userName?.toLowerCase().includes(query)
-          );
-        }
-
-        // Apply request type filter
-        if (this.requestTypeFilter) {
-          result = result.filter(request => request.type === this.requestTypeFilter);
-        }
-
-        // Apply date filter
-        if (this.dateFilter) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          if (this.dateFilter === 'today') {
-            result = result.filter(request => {
-              if (!request.requestDate) return false;
-
-              // Handle Firestore Timestamp objects
-              let requestDate;
-              if (request.requestDate.seconds) { // Firestore Timestamp
-                requestDate = new Date(request.requestDate.seconds * 1000);
-              } else { // Regular Date
-                requestDate = new Date(request.requestDate);
-              }
-
-              requestDate.setHours(0, 0, 0, 0);
-              return requestDate.getTime() === today.getTime();
-            });
-          } else if (this.dateFilter === 'week') {
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay());
-
-            result = result.filter(request => {
-              if (!request.requestDate) return false;
-
-              // Handle Firestore Timestamp objects
-              let requestDate;
-              if (request.requestDate.seconds) { // Firestore Timestamp
-                requestDate = new Date(request.requestDate.seconds * 1000);
-              } else { // Regular Date
-                requestDate = new Date(request.requestDate);
-              }
-
-              return requestDate >= weekStart;
-            });
-          } else if (this.dateFilter === 'month') {
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-            result = result.filter(request => {
-              if (!request.requestDate) return false;
-
-              // Handle Firestore Timestamp objects
-              let requestDate;
-              if (request.requestDate.seconds) { // Firestore Timestamp
-                requestDate = new Date(request.requestDate.seconds * 1000);
-              } else { // Regular Date
-                requestDate = new Date(request.requestDate);
-              }
-
-              return requestDate >= monthStart;
-            });
-          }
-        }
-
-        console.log("Final filtered pending requests:", result);
-        return result;
+        result = this.requests.filter(request => request.status === 'Pending');
       } else {
-        let result = this.requests;
-
-        // Apply search filter
-        if (this.searchQuery) {
-          const query = this.searchQuery.toLowerCase();
-          result = result.filter(request =>
-            request.componentName?.toLowerCase().includes(query) ||
-            request.userName?.toLowerCase().includes(query)
-          );
-        }
-
-        // Apply request type filter
-        if (this.requestTypeFilter) {
-          result = result.filter(request => request.type === this.requestTypeFilter);
-        }
-
-        // Apply date filter
-        if (this.dateFilter) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          if (this.dateFilter === 'today') {
-            result = result.filter(request => {
-              if (!request.requestDate) return false;
-
-              // Handle Firestore Timestamp objects
-              let requestDate;
-              if (request.requestDate.seconds) { // Firestore Timestamp
-                requestDate = new Date(request.requestDate.seconds * 1000);
-              } else { // Regular Date
-                requestDate = new Date(request.requestDate);
-              }
-
-              requestDate.setHours(0, 0, 0, 0);
-              return requestDate.getTime() === today.getTime();
-            });
-          } else if (this.dateFilter === 'week') {
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay());
-
-            result = result.filter(request => {
-              if (!request.requestDate) return false;
-
-              // Handle Firestore Timestamp objects
-              let requestDate;
-              if (request.requestDate.seconds) { // Firestore Timestamp
-                requestDate = new Date(request.requestDate.seconds * 1000);
-              } else { // Regular Date
-                requestDate = new Date(request.requestDate);
-              }
-
-              return requestDate >= weekStart;
-            });
-          } else if (this.dateFilter === 'month') {
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-            result = result.filter(request => {
-              if (!request.requestDate) return false;
-
-              // Handle Firestore Timestamp objects
-              let requestDate;
-              if (request.requestDate.seconds) { // Firestore Timestamp
-                requestDate = new Date(request.requestDate.seconds * 1000);
-              } else { // Regular Date
-                requestDate = new Date(request.requestDate);
-              }
-
-              return requestDate >= monthStart;
-            });
-          }
-        }
-
-        console.log("Filtered Requests:", result); // Debugging
-        return result;
+        result = this.requests;
       }
-    }
+      
+      // Apply search filter
+      if (this.searchQuery && this.searchQuery.trim() !== '') {
+        const query = this.searchQuery.toLowerCase().trim();
+        result = result.filter(request => {
+          // Check component name
+          const componentNameMatch = request.component?.name?.toLowerCase().includes(query) || 
+                                    request.componentName?.toLowerCase().includes(query);
+          
+          // Check user name or email
+          const userNameMatch = request.user?.name?.toLowerCase().includes(query) || 
+                               request.userName?.toLowerCase().includes(query);
+          
+          const userEmailMatch = request.user?.email?.toLowerCase().includes(query) || 
+                                request.userEmail?.toLowerCase().includes(query);
+          
+          return componentNameMatch || userNameMatch || userEmailMatch;
+        });
+      }
+      
+      // Apply request type filter
+      if (this.requestTypeFilter) {
+        result = result.filter(request => {
+          // Check both the type field and infer from status if needed
+          if (request.type) {
+            return request.type === this.requestTypeFilter;
+          } else if (this.requestTypeFilter === 'borrow') {
+            // Assume it's a borrow request if not explicitly marked
+            return true; 
+          }
+          return false;
+        });
+      }
+      
+      // Apply date filter
+      if (this.dateFilter) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (this.dateFilter === 'today') {
+          result = result.filter(request => {
+            if (!request.requestDate) return false;
+            
+            // Handle Firestore Timestamp objects
+            let requestDate;
+            if (request.requestDate.seconds) {
+              requestDate = new Date(request.requestDate.seconds * 1000);
+            } else if (typeof request.requestDate === 'string') {
+              requestDate = new Date(request.requestDate);
+            } else if (request.requestDate instanceof Date) {
+              requestDate = new Date(request.requestDate);
+            } else {
+              return false;
+            }
+            
+            // Compare just the date part
+            return requestDate.toDateString() === today.toDateString();
+          });
+        } else if (this.dateFilter === 'week') {
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay()); // Start of current week (Sunday)
+          
+          result = result.filter(request => {
+            if (!request.requestDate) return false;
+            
+            // Handle Firestore Timestamp objects
+            let requestDate;
+            if (request.requestDate.seconds) {
+              requestDate = new Date(request.requestDate.seconds * 1000);
+            } else if (typeof request.requestDate === 'string') {
+              requestDate = new Date(request.requestDate);
+            } else if (request.requestDate instanceof Date) {
+              requestDate = new Date(request.requestDate);
+            } else {
+              return false;
+            }
+            
+            return requestDate >= weekStart;
+          });
+        } else if (this.dateFilter === 'month') {
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          
+          result = result.filter(request => {
+            if (!request.requestDate) return false;
+            
+            // Handle Firestore Timestamp objects
+            let requestDate;
+            if (request.requestDate.seconds) {
+              requestDate = new Date(request.requestDate.seconds * 1000);
+            } else if (typeof request.requestDate === 'string') {
+              requestDate = new Date(request.requestDate);
+            } else if (request.requestDate instanceof Date) {
+              requestDate = new Date(request.requestDate);
+            } else {
+              return false;
+            }
+            
+            return requestDate >= monthStart;
+          });
+        }
+      }
+      
+      console.log("Filtered Requests:", result);
+      return result;
+    },
   },
   methods: {
     formatDate(date) {

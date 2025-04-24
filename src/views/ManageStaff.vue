@@ -21,7 +21,7 @@
     <div class="container mx-auto px-4 py-8">
       <!-- Page Header -->
       <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-800">Manage Staff</h1>
+        <h1 class="text-2xl font-bold text-gray-800">Manage user</h1>
         <button @click="goBack"
           class="flex items-center px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 rounded-md hover:bg-emerald-100 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24"
@@ -31,12 +31,12 @@
           Back
         </button>
       </div>
-      <p class="text-gray-600 mb-6">Add, edit, and manage staff members and their roles</p>
+      <p class="text-gray-600 mb-6">Add, edit, and manage  members and their roles</p>
 
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white p-4 rounded-lg shadow-sm">
-          <div class="text-sm text-gray-500">Total Staff</div>
+          <div class="text-sm text-gray-500">Total user</div>
           <div class="text-2xl font-bold text-emerald-600">{{ totalStaff }}</div>
         </div>
         <div class="bg-white p-4 rounded-lg shadow-sm">
@@ -71,7 +71,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Export Staff List
+          Export user List
         </button>
       </div>
 
@@ -83,7 +83,7 @@
               @click="activeTab = 'all'" 
               :class="`py-4 px-1 ${activeTab === 'all' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'} font-medium text-sm`"
             >
-              All Staff
+              All user
             </button>
             <button 
               @click="activeTab = 'admins'" 
