@@ -35,6 +35,7 @@
           <input 
             v-model="emailInput" 
             type="email" 
+            disabled
             placeholder="Enter your order email..."
             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           />

@@ -280,7 +280,7 @@ export default {
         const savedEmail = localStorage.getItem('userEmail')
         if (savedEmail) {
             this.userEmail = savedEmail
-            this.orderForm.email = savedEmail
+            // Don't set orderForm.email here - we'll set it when the form opens
         }
     },
     methods: {
@@ -313,7 +313,10 @@ export default {
             const savedEmail = localStorage.getItem('userEmail')
             if (savedEmail) {
                 this.userEmail = savedEmail
-                this.orderForm.email = savedEmail
+                this.orderForm.email = savedEmail  // Set the email in the form
+            } else {
+                // Clear the email field if no saved email
+                this.orderForm.email = ''
             }
             
             if (this.isLoggedIn) {
@@ -411,10 +414,9 @@ export default {
         async submitOrder() {
             if (!this.validateOrderForm()) return
             
-            // If we have a userEmail, use that instead of the form's email
-            if (this.userEmail) {
-                this.orderForm.email = this.userEmail
-            }
+            // Use the email from the form if userEmail is empty
+            // Otherwise use the userEmail (from localStorage)
+            const orderEmail = this.userEmail || this.orderForm.email
             
             this.isSubmitting = true
             
@@ -428,7 +430,7 @@ export default {
                     productName: this.selectedProduct.name,
                     productPrice: this.selectedProduct.price,
                     customerName: this.orderForm.name,
-                    customerEmail: this.orderForm.email,
+                    customerEmail: orderEmail, // Use the email we determined above
                     customerPhone: this.orderForm.phone,
                     deliveryAddress: this.orderForm.address,
                     paymentScreenshotUrl: screenshotUrl,
@@ -440,8 +442,8 @@ export default {
                 await addDoc(collection(db, 'salesOrders'), orderData)
                 
                 // Save email to localStorage for future use
-                localStorage.setItem('userEmail', this.orderForm.email)
-                this.userEmail = this.orderForm.email
+                localStorage.setItem('userEmail', orderEmail)
+                this.userEmail = orderEmail
                 
                 // Show success modal and reset form
                 this.orderForm = {
