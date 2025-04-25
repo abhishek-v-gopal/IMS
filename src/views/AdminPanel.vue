@@ -34,7 +34,7 @@
                         <div class="flex flex-col space-y-2">
                             <a href="/admin/products" class="text-emerald-600 font-medium hover:text-emerald-700">Add products →</a>
                             <a href="/admin/orders" class="text-emerald-600 font-medium hover:text-emerald-700">Manage orders →</a>
-                            <p class="text-xs text-red-600 mt-1">* Admin access only</p>
+                           
                         </div>
                     </div>
                     <div class="bg-blue-50 p-6 rounded-lg border border-blue-100">
@@ -61,7 +61,7 @@
                 </div>
 
                 <!-- Admin Access Warning -->
-                <div class="mt-8 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <!-- <div class="mt-8 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                     <div class="flex items-start">
                         <div class="flex-shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,7 +76,7 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Admin Data Table -->
                 <!-- <div class="mt-12 bg-white rounded-lg shadow-sm overflow-hidden">
