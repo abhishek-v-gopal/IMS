@@ -11,6 +11,9 @@
     @show-login-modal="showLoginModal = true"
   />
 
+  <!-- Admin Check Component -->
+  <AdminCheck requiredRole="admin" />
+
   <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">Product Management</h1>
@@ -142,6 +145,7 @@
 <script>
 import NavBar from '../components/NavBar.vue'
 import Footer from '../components/Footer.vue'
+import AdminCheck from '../components/AdminCheck.vue'
 import { collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from 'firebase/firestore'
 import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { db } from '../firebase/config' // Ensure you have this firebase config file
@@ -150,7 +154,8 @@ export default {
   name: 'SaleComponent',
   components: {
     NavBar,
-    Footer
+    Footer,
+    AdminCheck
   },
   data() {
     return {

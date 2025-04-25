@@ -11,6 +11,9 @@
     @show-login-modal="showLoginModal = true"
   />
 
+  <!-- Admin Check Component -->
+  <AdminCheck requiredRole="admin" />
+
   <!-- Status Changed Notification -->
   <div v-if="statusChangeNotification.show" 
        class="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded max-w-md shadow-lg z-50 flex items-center"
@@ -365,7 +368,7 @@
                 <div v-if="order.status === 'cancelled'" class="flex items-center">
                   <div class="h-5 w-5 rounded-full bg-red-500 flex items-center justify-center mr-3">
                     <svg class="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                     </svg>
                   </div>
                   <div>
@@ -400,6 +403,7 @@
 <script>
 import NavBar from '../components/NavBar.vue'
 import Footer from '../components/Footer.vue'
+import AdminCheck from '../components/AdminCheck.vue'
 import { collection, query, getDocs, orderBy, updateDoc, doc, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
@@ -407,7 +411,8 @@ export default {
   name: 'AdminOrdersView',
   components: {
     NavBar,
-    Footer
+    Footer,
+    AdminCheck
   },
   data() {
     return {
